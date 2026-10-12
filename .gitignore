@@ -1,0 +1,25 @@
+# Java / Maven
+target/
+*.class
+*.jar
+.mvn/wrapper/maven-wrapper.jar
+
+# React / Node
+node_modules/
+dist/
+build/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+application-local.properties
+application-local.yml
+
+# IDE and operating system
+.idea/
+.vscode/
+.DS_Store
+
+# Logs
+*.log
