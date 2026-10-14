@@ -26,6 +26,12 @@ public class Institution {
     @Column(name = "paper_count")
     private Integer paperCount = 0;
 
+    @Column(name = "ror_id", length = 100)
+    private String rorId;
+
+    @Column(name = "institution_type", length = 100)
+    private String institutionType;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -36,6 +42,15 @@ public class Institution {
         this.openAlexId = openAlexId;
         this.name = name;
         this.countryCode = countryCode;
+    }
+
+    public Institution(String id, String openAlexId, String name, String countryCode, String rorId, String institutionType) {
+        this.id = id;
+        this.openAlexId = openAlexId;
+        this.name = name;
+        this.countryCode = countryCode;
+        this.rorId = rorId;
+        this.institutionType = institutionType;
     }
 
     public String getId() { return id; }
@@ -52,6 +67,12 @@ public class Institution {
 
     public Integer getPaperCount() { return paperCount; }
     public void setPaperCount(Integer paperCount) { this.paperCount = paperCount; }
+
+    public String getRorId() { return rorId; }
+    public void setRorId(String rorId) { this.rorId = rorId; }
+
+    public String getInstitutionType() { return institutionType; }
+    public void setInstitutionType(String institutionType) { this.institutionType = institutionType; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

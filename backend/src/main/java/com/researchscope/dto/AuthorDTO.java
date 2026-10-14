@@ -4,6 +4,7 @@ public class AuthorDTO {
     private String id;
     private String name;
     private String openAlexId;
+    private String orcid;
     private Integer paperCount;
     private Integer citationCount;
 
@@ -17,6 +18,15 @@ public class AuthorDTO {
         this.citationCount = citationCount;
     }
 
+    public AuthorDTO(String id, String name, String openAlexId, String orcid, Integer paperCount, Integer citationCount) {
+        this.id = id;
+        this.name = name;
+        this.openAlexId = openAlexId;
+        this.orcid = orcid;
+        this.paperCount = paperCount;
+        this.citationCount = citationCount;
+    }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -25,6 +35,9 @@ public class AuthorDTO {
 
     public String getOpenAlexId() { return openAlexId; }
     public void setOpenAlexId(String openAlexId) { this.openAlexId = openAlexId; }
+
+    public String getOrcid() { return orcid; }
+    public void setOrcid(String orcid) { this.orcid = orcid; }
 
     public Integer getPaperCount() { return paperCount; }
     public void setPaperCount(Integer paperCount) { this.paperCount = paperCount; }

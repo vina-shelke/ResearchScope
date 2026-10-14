@@ -13,6 +13,7 @@ export default function Header({ activeTab, setActiveTab, onSearch }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'papers', label: 'Papers' },
+    { id: 'saved', label: '★ Saved Papers' },
     { id: 'authors', label: 'Authors' },
     { id: 'institutions', label: 'Institutions' },
     { id: 'topics', label: 'Topics' },

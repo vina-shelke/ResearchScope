@@ -26,7 +26,7 @@ public class SemanticScholarAdapter {
         List<PaperDTO> results = new ArrayList<>();
         try {
             String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-            String url = String.format("%s/paper/search?query=%s&limit=%d&fields=paperId,title,abstract,year,venue,citationCount,externalIds,authors,fieldsOfStudy,url",
+            String url = String.format("%s/paper/search?query=%s&limit=%d&fields=paperId,title,abstract,year,venue,citationCount,externalIds,authors,fieldsOfStudy,url,isOpenAccess,openAccessPdf,publicationTypes",
                     baseUrl, encodedQuery, Math.min(limit, 20));
 
             log.info("Fetching Semantic Scholar papers from: {}", url);
@@ -76,6 +76,22 @@ public class SemanticScholarAdapter {
             Object citationCount = paperMap.get("citationCount");
             if (citationCount instanceof Number n) {
                 paper.setCitationCount(n.intValue());
+            }
+
+            // Open Access & PDF
+            Boolean isOa = (Boolean) paperMap.get("isOpenAccess");
+            paper.setIsOpenAccess(Boolean.TRUE.equals(isOa));
+
+            Map<String, Object> oaPdf = (Map<String, Object>) paperMap.get("openAccessPdf");
+            if (oaPdf != null && oaPdf.containsKey("url")) {
+                paper.setPdfUrl((String) oaPdf.get("url"));
+                paper.setIsOpenAccess(true);
+            }
+
+            // Publication Types
+            List<String> pubTypes = (List<String>) paperMap.get("publicationTypes");
+            if (pubTypes != null && !pubTypes.isEmpty()) {
+                paper.setPaperType(String.join(", ", pubTypes));
             }
 
             // External IDs (DOI)

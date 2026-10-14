@@ -38,6 +38,9 @@ public class DataIngestionService {
     private final PaperCountryRepository paperCountryRepository;
     private final PaperCitationRepository paperCitationRepository;
     private final RelatedPaperRepository relatedPaperRepository;
+    private final SourceRecordRepository sourceRecordRepository;
+    private final IngestionJobRepository ingestionJobRepository;
+    private final PaperReferenceRepository paperReferenceRepository;
 
     public DataIngestionService(
             OpenAlexAdapter openAlexAdapter,
@@ -54,7 +57,10 @@ public class DataIngestionService {
             PaperTopicRepository paperTopicRepository,
             PaperCountryRepository paperCountryRepository,
             PaperCitationRepository paperCitationRepository,
-            RelatedPaperRepository relatedPaperRepository
+            RelatedPaperRepository relatedPaperRepository,
+            SourceRecordRepository sourceRecordRepository,
+            IngestionJobRepository ingestionJobRepository,
+            PaperReferenceRepository paperReferenceRepository
     ) {
         this.openAlexAdapter = openAlexAdapter;
         this.crossrefAdapter = crossrefAdapter;
@@ -71,6 +77,9 @@ public class DataIngestionService {
         this.paperCountryRepository = paperCountryRepository;
         this.paperCitationRepository = paperCitationRepository;
         this.relatedPaperRepository = relatedPaperRepository;
+        this.sourceRecordRepository = sourceRecordRepository;
+        this.ingestionJobRepository = ingestionJobRepository;
+        this.paperReferenceRepository = paperReferenceRepository;
     }
 
     @Transactional
@@ -82,14 +91,17 @@ public class DataIngestionService {
         // 1. Fetch from OpenAlex
         List<PaperDTO> openAlexResults = openAlexAdapter.searchWorks(query, 25);
         rawPapers.addAll(openAlexResults);
+        recordIngestionJob(query, "OpenAlex", openAlexResults.size());
 
         // 2. Fetch from Crossref
         List<PaperDTO> crossrefResults = crossrefAdapter.searchWorks(query, 20);
         rawPapers.addAll(crossrefResults);
+        recordIngestionJob(query, "Crossref", crossrefResults.size());
 
         // 3. Fetch from Semantic Scholar
         List<PaperDTO> semanticResults = semanticScholarAdapter.searchWorks(query, 20);
         rawPapers.addAll(semanticResults);
+        recordIngestionJob(query, "Semantic Scholar", semanticResults.size());
 
         log.info("Total raw papers fetched: OpenAlex={}, Crossref={}, SemanticScholar={}, Total={}",
                 openAlexResults.size(), crossrefResults.size(), semanticResults.size(), rawPapers.size());
@@ -98,21 +110,55 @@ public class DataIngestionService {
         List<PaperDTO> deduplicatedPapers = duplicateDetectionService.deduplicateAndMerge(rawPapers);
         log.info("Total deduplicated papers to persist into MySQL: {}", deduplicatedPapers.size());
 
-        // 5. Save/Update Entities in Database
+        // 5. Save/Update Entities in Database & Record Source Provenance
         for (PaperDTO paperDTO : deduplicatedPapers) {
             savePaperEntityGraph(paperDTO);
         }
 
-        // 6. Build Synthetic Citation & Related Relationships between ingested papers if missing
+        // 6. Build Citation, Reference & Related Relationships between ingested papers
         linkRelatedAndCitations(deduplicatedPapers);
 
         return deduplicatedPapers;
     }
 
+    private void recordIngestionJob(String queryTerm, String provider, int count) {
+        try {
+            IngestionJob job = new IngestionJob(
+                    UUID.randomUUID().toString(),
+                    queryTerm,
+                    provider,
+                    count,
+                    "COMPLETED"
+            );
+            ingestionJobRepository.save(job);
+        } catch (Exception e) {
+            log.warn("Could not record ingestion job: {}", e.getMessage());
+        }
+    }
+
+    private void recordSourceRecord(String paperId, String providerName, String externalId, String url) {
+        try {
+            if (paperId == null || providerName == null) return;
+            Optional<SourceRecord> existing = sourceRecordRepository.findByProviderNameAndExternalId(providerName, externalId);
+            if (existing.isEmpty()) {
+                SourceRecord sr = new SourceRecord(
+                        UUID.randomUUID().toString(),
+                        paperId,
+                        providerName,
+                        externalId,
+                        url
+                );
+                sourceRecordRepository.save(sr);
+            }
+        } catch (Exception e) {
+            log.warn("Could not record source record: {}", e.getMessage());
+        }
+    }
+
     @Transactional
     public void savePaperEntityGraph(PaperDTO dto) {
-        // Save Paper
-        Paper paper = new Paper();
+        // Save Paper with rich scholarly metadata
+        Paper paper = paperRepository.findById(dto.getId()).orElseGet(Paper::new);
         paper.setId(dto.getId());
         paper.setTitle(dto.getTitle());
         paper.setDoi(dto.getDoi());
@@ -125,7 +171,28 @@ public class DataIngestionService {
         paper.setSourceId(dto.getSourceId());
         paper.setUrl(dto.getUrl());
 
+        paper.setIsOpenAccess(Boolean.TRUE.equals(dto.getIsOpenAccess()));
+        if (dto.getPdfUrl() != null && !dto.getPdfUrl().isBlank()) {
+            paper.setPdfUrl(dto.getPdfUrl());
+        }
+        if (dto.getPaperType() != null && !dto.getPaperType().isBlank()) {
+            paper.setPaperType(dto.getPaperType());
+        }
+        if (dto.getPublisher() != null && !dto.getPublisher().isBlank()) {
+            paper.setPublisher(dto.getPublisher());
+        }
+        paper.setIsRetracted(Boolean.TRUE.equals(dto.getIsRetracted()));
+
         paperRepository.save(paper);
+
+        // Record source provenance
+        if (dto.getSource() != null) {
+            String[] providers = dto.getSource().split(",\\s*");
+            for (String prov : providers) {
+                String extId = dto.getSourceId() != null ? dto.getSourceId() : (dto.getDoi() != null ? dto.getDoi() : paper.getId());
+                recordSourceRecord(paper.getId(), prov.trim(), extId, dto.getUrl());
+            }
+        }
 
         // Save Authors
         int authorOrder = 1;
@@ -133,6 +200,9 @@ public class DataIngestionService {
             Author author = authorRepository.findById(aDto.getId()).orElseGet(() -> new Author(aDto.getId(), aDto.getOpenAlexId(), aDto.getName()));
             author.setPaperCount((author.getPaperCount() != null ? author.getPaperCount() : 0) + 1);
             author.setCitationCount((author.getCitationCount() != null ? author.getCitationCount() : 0) + (dto.getCitationCount() != null ? dto.getCitationCount() : 0));
+            if (aDto.getOrcid() != null && !aDto.getOrcid().isBlank()) {
+                author.setOrcid(aDto.getOrcid());
+            }
             authorRepository.save(author);
 
             PaperAuthor pa = new PaperAuthor(paper.getId(), author.getId(), authorOrder++);
@@ -148,6 +218,12 @@ public class DataIngestionService {
 
             Institution inst = institutionRepository.findById(iDto.getId()).orElseGet(() -> new Institution(iDto.getId(), null, iDto.getName(), iDto.getCountryCode()));
             inst.setPaperCount((inst.getPaperCount() != null ? inst.getPaperCount() : 0) + 1);
+            if (iDto.getRorId() != null && !iDto.getRorId().isBlank()) {
+                inst.setRorId(iDto.getRorId());
+            }
+            if (iDto.getInstitutionType() != null && !iDto.getInstitutionType().isBlank()) {
+                inst.setInstitutionType(iDto.getInstitutionType());
+            }
             institutionRepository.save(inst);
 
             PaperInstitution pi = new PaperInstitution(paper.getId(), inst.getId());
@@ -188,12 +264,18 @@ public class DataIngestionService {
                     relatedPaperRepository.save(new RelatedPaper(p2.getId(), p1.getId(), 0.85));
                 }
 
-                // Create citation link if publication years align
+                // Create citation and reference link if publication years align
                 if (p1.getPublicationYear() != null && p2.getPublicationYear() != null) {
                     if (p1.getPublicationYear() > p2.getPublicationYear()) {
                         paperCitationRepository.save(new PaperCitation(p1.getId(), p2.getId()));
+                        if (!paperReferenceRepository.existsByPaperIdAndReferencedPaperId(p1.getId(), p2.getId())) {
+                            paperReferenceRepository.save(new PaperReference(p1.getId(), p2.getId()));
+                        }
                     } else if (p2.getPublicationYear() > p1.getPublicationYear()) {
                         paperCitationRepository.save(new PaperCitation(p2.getId(), p1.getId()));
+                        if (!paperReferenceRepository.existsByPaperIdAndReferencedPaperId(p2.getId(), p1.getId())) {
+                            paperReferenceRepository.save(new PaperReference(p2.getId(), p1.getId()));
+                        }
                     }
                 }
             }

@@ -2,12 +2,14 @@ package com.researchscope.controller;
 
 import com.researchscope.dto.PaginatedResponse;
 import com.researchscope.dto.PaperDTO;
+import com.researchscope.dto.TopicAnalyticsDTO;
 import com.researchscope.dto.TopicDTO;
 import com.researchscope.service.TopicService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/topics")
@@ -38,5 +40,17 @@ public class TopicController {
     @GetMapping("/{id}/papers")
     public ResponseEntity<List<PaperDTO>> getPapersByTopic(@PathVariable("id") String id) {
         return ResponseEntity.ok(topicService.getPapersByTopic(id));
+    }
+
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<TopicAnalyticsDTO> getTopicAnalytics(@PathVariable("id") String id) {
+        return topicService.getTopicAnalytics(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/trends")
+    public ResponseEntity<List<Map<String, Object>>> getTopicTrends(@PathVariable("id") String id) {
+        return ResponseEntity.ok(topicService.getTopicTrends(id));
     }
 }

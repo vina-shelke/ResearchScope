@@ -7,6 +7,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PaperService {
@@ -23,6 +24,8 @@ public class PaperService {
     private final PaperCountryRepository paperCountryRepository;
     private final PaperCitationRepository paperCitationRepository;
     private final RelatedPaperRepository relatedPaperRepository;
+    private final PaperReferenceRepository paperReferenceRepository;
+    private final SavedPaperRepository savedPaperRepository;
 
     public PaperService(
             PaperRepository paperRepository,
@@ -35,7 +38,9 @@ public class PaperService {
             PaperTopicRepository paperTopicRepository,
             PaperCountryRepository paperCountryRepository,
             PaperCitationRepository paperCitationRepository,
-            RelatedPaperRepository relatedPaperRepository
+            RelatedPaperRepository relatedPaperRepository,
+            PaperReferenceRepository paperReferenceRepository,
+            SavedPaperRepository savedPaperRepository
     ) {
         this.paperRepository = paperRepository;
         this.authorRepository = authorRepository;
@@ -48,6 +53,8 @@ public class PaperService {
         this.paperCountryRepository = paperCountryRepository;
         this.paperCitationRepository = paperCitationRepository;
         this.relatedPaperRepository = relatedPaperRepository;
+        this.paperReferenceRepository = paperReferenceRepository;
+        this.savedPaperRepository = savedPaperRepository;
     }
 
     public PaginatedResponse<PaperDTO> searchPapers(
@@ -55,6 +62,23 @@ public class PaperService {
             Integer year,
             String source,
             Integer minCitations,
+            String sortBy,
+            String sortDir,
+            int page,
+            int size
+    ) {
+        return searchPapersExtended(query, year, source, minCitations, null, null, null, null, sortBy, sortDir, page, size);
+    }
+
+    public PaginatedResponse<PaperDTO> searchPapersExtended(
+            String query,
+            Integer year,
+            String source,
+            Integer minCitations,
+            Boolean isOpenAccess,
+            String paperType,
+            String author,
+            String institution,
             String sortBy,
             String sortDir,
             int page,
@@ -70,11 +94,15 @@ public class PaperService {
         }
 
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Paper> paperPage = paperRepository.searchPapers(
-                (query != null && !query.isBlank()) ? query : null,
+        Page<Paper> paperPage = paperRepository.searchPapersExtended(
+                (query != null && !query.isBlank()) ? query.trim() : null,
                 year,
-                (source != null && !source.isBlank()) ? source : null,
+                (source != null && !source.isBlank()) ? source.trim() : null,
                 minCitations,
+                isOpenAccess,
+                (paperType != null && !paperType.isBlank()) ? paperType.trim() : null,
+                (author != null && !author.isBlank()) ? author.trim() : null,
+                (institution != null && !institution.isBlank()) ? institution.trim() : null,
                 pageable
         );
 
@@ -97,6 +125,7 @@ public class PaperService {
             PaperDTO dto = toPaperDTO(paper);
             dto.setRelatedPapers(getRelatedPapers(id));
             dto.setCitations(getCitationsForPaper(id));
+            dto.setReferences(getReferencesForPaper(id));
             return dto;
         });
     }
@@ -119,6 +148,15 @@ public class PaperService {
         return list;
     }
 
+    public List<PaperDTO> getReferencesForPaper(String paperId) {
+        List<PaperReference> refs = paperReferenceRepository.findByPaperId(paperId);
+        List<PaperDTO> list = new ArrayList<>();
+        for (PaperReference pr : refs) {
+            paperRepository.findById(pr.getReferencedPaperId()).ifPresent(p -> list.add(toPaperDTO(p)));
+        }
+        return list;
+    }
+
     public PaperDTO toPaperDTO(Paper paper) {
         PaperDTO dto = new PaperDTO();
         dto.setId(paper.getId());
@@ -133,11 +171,24 @@ public class PaperService {
         dto.setSourceId(paper.getSourceId());
         dto.setUrl(paper.getUrl());
 
+        dto.setIsOpenAccess(paper.getIsOpenAccess() != null ? paper.getIsOpenAccess() : false);
+        dto.setPdfUrl(paper.getPdfUrl());
+        dto.setPaperType(paper.getPaperType());
+        dto.setPublisher(paper.getPublisher());
+        dto.setIsRetracted(paper.getIsRetracted() != null ? paper.getIsRetracted() : false);
+
+        // Saved bookmark status
+        savedPaperRepository.findByPaperId(paper.getId()).ifPresent(sp -> {
+            dto.setIsSaved(true);
+            dto.setSavedCollection(sp.getCollectionName());
+            dto.setSavedNotes(sp.getNotes());
+        });
+
         // Authors
         List<PaperAuthor> pas = paperAuthorRepository.findByPaperId(paper.getId());
         for (PaperAuthor pa : pas) {
             authorRepository.findById(pa.getAuthorId()).ifPresent(a ->
-                    dto.getAuthors().add(new AuthorDTO(a.getId(), a.getName(), a.getOpenAlexId(), a.getPaperCount(), a.getCitationCount()))
+                    dto.getAuthors().add(new AuthorDTO(a.getId(), a.getName(), a.getOpenAlexId(), a.getOrcid(), a.getPaperCount(), a.getCitationCount()))
             );
         }
 
@@ -145,7 +196,7 @@ public class PaperService {
         List<PaperInstitution> pis = paperInstitutionRepository.findByPaperId(paper.getId());
         for (PaperInstitution pi : pis) {
             institutionRepository.findById(pi.getInstitutionId()).ifPresent(inst ->
-                    dto.getInstitutions().add(new InstitutionDTO(inst.getId(), inst.getName(), inst.getCountryCode(), inst.getCountryCode(), inst.getPaperCount()))
+                    dto.getInstitutions().add(new InstitutionDTO(inst.getId(), inst.getName(), inst.getCountryCode(), inst.getCountryCode(), inst.getPaperCount(), inst.getRorId(), inst.getInstitutionType()))
             );
         }
 
@@ -164,5 +215,68 @@ public class PaperService {
         }
 
         return dto;
+    }
+
+    public String generateBibTeX(PaperDTO paper) {
+        String citeKey = (paper.getAuthors() != null && !paper.getAuthors().isEmpty())
+                ? paper.getAuthors().get(0).getName().replaceAll("[^a-zA-Z]", "") + (paper.getPublicationYear() != null ? paper.getPublicationYear() : "")
+                : "paper_" + (paper.getId() != null ? paper.getId().substring(0, Math.min(8, paper.getId().length())) : "record");
+
+        String authorString = (paper.getAuthors() != null && !paper.getAuthors().isEmpty())
+                ? paper.getAuthors().stream().map(AuthorDTO::getName).collect(Collectors.joining(" and "))
+                : "Unknown";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("@article{").append(citeKey).append(",\n");
+        sb.append("  title = {").append(escapeBibTeX(paper.getTitle())).append("},\n");
+        sb.append("  author = {").append(escapeBibTeX(authorString)).append("},\n");
+        if (paper.getPublicationYear() != null) {
+            sb.append("  year = {").append(paper.getPublicationYear()).append("},\n");
+        }
+        if (paper.getVenue() != null && !paper.getVenue().isBlank()) {
+            sb.append("  journal = {").append(escapeBibTeX(paper.getVenue())).append("},\n");
+        }
+        if (paper.getDoi() != null && !paper.getDoi().isBlank()) {
+            sb.append("  doi = {").append(escapeBibTeX(paper.getDoi())).append("},\n");
+        }
+        if (paper.getUrl() != null && !paper.getUrl().isBlank()) {
+            sb.append("  url = {").append(escapeBibTeX(paper.getUrl())).append("},\n");
+        }
+        if (paper.getPublisher() != null && !paper.getPublisher().isBlank()) {
+            sb.append("  publisher = {").append(escapeBibTeX(paper.getPublisher())).append("},\n");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    public String generateCsv(List<PaperDTO> papers) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\"ID\",\"Title\",\"Authors\",\"Publication Year\",\"Venue\",\"Citations\",\"DOI\",\"Open Access\",\"PDF URL\",\"Paper Type\",\"Publisher\",\"Source\"\n");
+        for (PaperDTO p : papers) {
+            String authors = (p.getAuthors() != null) ? p.getAuthors().stream().map(AuthorDTO::getName).collect(Collectors.joining("; ")) : "";
+            sb.append(escapeCsv(p.getId())).append(",");
+            sb.append(escapeCsv(p.getTitle())).append(",");
+            sb.append(escapeCsv(authors)).append(",");
+            sb.append(p.getPublicationYear() != null ? p.getPublicationYear() : "").append(",");
+            sb.append(escapeCsv(p.getVenue())).append(",");
+            sb.append(p.getCitationCount() != null ? p.getCitationCount() : 0).append(",");
+            sb.append(escapeCsv(p.getDoi())).append(",");
+            sb.append(Boolean.TRUE.equals(p.getIsOpenAccess()) ? "true" : "false").append(",");
+            sb.append(escapeCsv(p.getPdfUrl())).append(",");
+            sb.append(escapeCsv(p.getPaperType())).append(",");
+            sb.append(escapeCsv(p.getPublisher())).append(",");
+            sb.append(escapeCsv(p.getSource())).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String escapeBibTeX(String text) {
+        if (text == null) return "";
+        return text.replace("{", "\\{").replace("}", "\\}").replace("\n", " ").trim();
+    }
+
+    private String escapeCsv(String text) {
+        if (text == null) return "\"\"";
+        return "\"" + text.replace("\"", "\"\"").replace("\n", " ").replace("\r", " ").trim() + "\"";
     }
 }

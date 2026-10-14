@@ -82,11 +82,33 @@ public class OpenAlexAdapter {
             Map<String, Object> primaryLocation = (Map<String, Object>) work.get("primary_location");
             if (primaryLocation != null) {
                 Map<String, Object> sourceMap = (Map<String, Object>) primaryLocation.get("source");
-                if (sourceMap != null && sourceMap.containsKey("display_name")) {
-                    paper.setVenue((String) sourceMap.get("display_name"));
+                if (sourceMap != null) {
+                    if (sourceMap.containsKey("display_name")) {
+                        paper.setVenue((String) sourceMap.get("display_name"));
+                    }
+                    if (sourceMap.containsKey("host_organization_name")) {
+                        paper.setPublisher((String) sourceMap.get("host_organization_name"));
+                    }
                 }
                 paper.setUrl((String) primaryLocation.get("landing_page_url"));
+                if (primaryLocation.containsKey("pdf_url") && primaryLocation.get("pdf_url") != null) {
+                    paper.setPdfUrl((String) primaryLocation.get("pdf_url"));
+                }
             }
+
+            // Open Access Metadata
+            Map<String, Object> openAccess = (Map<String, Object>) work.get("open_access");
+            if (openAccess != null) {
+                Boolean isOa = (Boolean) openAccess.get("is_oa");
+                paper.setIsOpenAccess(Boolean.TRUE.equals(isOa));
+                if (paper.getPdfUrl() == null && openAccess.containsKey("oa_url")) {
+                    paper.setPdfUrl((String) openAccess.get("oa_url"));
+                }
+            }
+
+            // Paper Type & Retraction Status
+            paper.setPaperType((String) work.get("type"));
+            paper.setIsRetracted(Boolean.TRUE.equals(work.get("is_retracted")));
 
             // Citation Count
             Object citeCount = work.get("cited_by_count");
@@ -103,11 +125,15 @@ public class OpenAlexAdapter {
                     if (authorMap != null) {
                         String authorName = (String) authorMap.get("display_name");
                         String authorId = (String) authorMap.get("id");
+                        String orcid = (String) authorMap.get("orcid");
                         if (authorName != null) {
                             AuthorDTO authorDTO = new AuthorDTO();
                             authorDTO.setId(UUID.nameUUIDFromBytes(authorName.toLowerCase().getBytes()).toString());
                             authorDTO.setName(authorName);
                             authorDTO.setOpenAlexId(authorId);
+                            if (orcid != null) {
+                                authorDTO.setOrcid(orcid.replace("https://orcid.org/", "").trim());
+                            }
                             paper.getAuthors().add(authorDTO);
                         }
                     }
@@ -117,11 +143,17 @@ public class OpenAlexAdapter {
                         for (Map<String, Object> inst : insts) {
                             String instName = (String) inst.get("display_name");
                             String countryCode = (String) inst.get("country_code");
+                            String ror = (String) inst.get("ror");
+                            String instType = (String) inst.get("type");
                             if (instName != null) {
                                 InstitutionDTO instDTO = new InstitutionDTO();
                                 instDTO.setId(UUID.nameUUIDFromBytes(instName.toLowerCase().getBytes()).toString());
                                 instDTO.setName(instName);
                                 instDTO.setCountryCode(countryCode);
+                                if (ror != null) {
+                                    instDTO.setRorId(ror.replace("https://ror.org/", "").trim());
+                                }
+                                instDTO.setInstitutionType(instType);
                                 paper.getInstitutions().add(instDTO);
                             }
                             if (countryCode != null) countrySet.add(countryCode.toUpperCase());

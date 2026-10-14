@@ -26,6 +26,9 @@ public class Author {
     @Column(name = "citation_count")
     private Integer citationCount = 0;
 
+    @Column(length = 50)
+    private String orcid;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -37,6 +40,13 @@ public class Author {
         this.name = name;
     }
 
+    public Author(String id, String openAlexId, String name, String orcid) {
+        this.id = id;
+        this.openAlexId = openAlexId;
+        this.name = name;
+        this.orcid = orcid;
+    }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -45,6 +55,9 @@ public class Author {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getOrcid() { return orcid; }
+    public void setOrcid(String orcid) { this.orcid = orcid; }
 
     public Integer getPaperCount() { return paperCount; }
     public void setPaperCount(Integer paperCount) { this.paperCount = paperCount; }

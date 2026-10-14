@@ -16,12 +16,23 @@ public class PaperDTO {
     private String sourceId;
     private String url;
 
+    private Boolean isOpenAccess = false;
+    private String pdfUrl;
+    private String paperType;
+    private String publisher;
+    private Boolean isRetracted = false;
+
+    private Boolean isSaved = false;
+    private String savedCollection;
+    private String savedNotes;
+
     private List<AuthorDTO> authors = new ArrayList<>();
     private List<InstitutionDTO> institutions = new ArrayList<>();
     private List<TopicDTO> topics = new ArrayList<>();
     private List<String> countries = new ArrayList<>();
     private List<PaperDTO> relatedPapers = new ArrayList<>();
     private List<PaperDTO> citations = new ArrayList<>();
+    private List<PaperDTO> references = new ArrayList<>();
 
     public PaperDTO() {}
 
@@ -58,6 +69,30 @@ public class PaperDTO {
     public String getUrl() { return url; }
     public void setUrl(String url) { this.url = url; }
 
+    public Boolean getIsOpenAccess() { return isOpenAccess; }
+    public void setIsOpenAccess(Boolean isOpenAccess) { this.isOpenAccess = isOpenAccess; }
+
+    public String getPdfUrl() { return pdfUrl; }
+    public void setPdfUrl(String pdfUrl) { this.pdfUrl = pdfUrl; }
+
+    public String getPaperType() { return paperType; }
+    public void setPaperType(String paperType) { this.paperType = paperType; }
+
+    public String getPublisher() { return publisher; }
+    public void setPublisher(String publisher) { this.publisher = publisher; }
+
+    public Boolean getIsRetracted() { return isRetracted; }
+    public void setIsRetracted(Boolean isRetracted) { this.isRetracted = isRetracted; }
+
+    public Boolean getIsSaved() { return isSaved; }
+    public void setIsSaved(Boolean isSaved) { this.isSaved = isSaved; }
+
+    public String getSavedCollection() { return savedCollection; }
+    public void setSavedCollection(String savedCollection) { this.savedCollection = savedCollection; }
+
+    public String getSavedNotes() { return savedNotes; }
+    public void setSavedNotes(String savedNotes) { this.savedNotes = savedNotes; }
+
     public List<AuthorDTO> getAuthors() { return authors; }
     public void setAuthors(List<AuthorDTO> authors) { this.authors = authors; }
 
@@ -75,4 +110,7 @@ public class PaperDTO {
 
     public List<PaperDTO> getCitations() { return citations; }
     public void setCitations(List<PaperDTO> citations) { this.citations = citations; }
+
+    public List<PaperDTO> getReferences() { return references; }
+    public void setReferences(List<PaperDTO> references) { this.references = references; }
 }

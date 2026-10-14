@@ -47,6 +47,24 @@ public class Paper {
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "is_open_access")
+    private Boolean isOpenAccess = false;
+
+    @Column(name = "pdf_url", length = 500)
+    private String pdfUrl;
+
+    @Column(name = "paper_type", length = 100)
+    private String paperType;
+
+    @Column(length = 255)
+    private String publisher;
+
+    @Column(name = "is_retracted")
+    private Boolean isRetracted = false;
+
+    @Column(name = "last_updated", insertable = false, updatable = false)
+    private LocalDateTime lastUpdated;
+
     public Paper() {}
 
     public Paper(String id, String title, String doi, Integer publicationYear, String venue, String source) {
@@ -92,4 +110,21 @@ public class Paper {
     public void setUrl(String url) { this.url = url; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public Boolean getIsOpenAccess() { return isOpenAccess; }
+    public void setIsOpenAccess(Boolean isOpenAccess) { this.isOpenAccess = isOpenAccess; }
+
+    public String getPdfUrl() { return pdfUrl; }
+    public void setPdfUrl(String pdfUrl) { this.pdfUrl = pdfUrl; }
+
+    public String getPaperType() { return paperType; }
+    public void setPaperType(String paperType) { this.paperType = paperType; }
+
+    public String getPublisher() { return publisher; }
+    public void setPublisher(String publisher) { this.publisher = publisher; }
+
+    public Boolean getIsRetracted() { return isRetracted; }
+    public void setIsRetracted(Boolean isRetracted) { this.isRetracted = isRetracted; }
+
+    public LocalDateTime getLastUpdated() { return lastUpdated; }
 }

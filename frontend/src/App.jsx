@@ -8,7 +8,7 @@ import TopicsView from './components/TopicsView';
 import CitationsView from './components/CitationsView';
 import ConnectionsView from './components/ConnectionsView';
 import PaperDetailModal from './components/PaperDetailModal';
-
+import SavedPapersView from './components/SavedPapersView';
 import { fetchLandscape, fetchPaperById } from './api/client';
 
 export default function App() {
@@ -71,6 +71,10 @@ export default function App() {
           <PapersView onSelectPaper={handleSelectPaper} />
         )}
 
+        {activeTab === 'saved' && (
+          <SavedPapersView onSelectPaper={handleSelectPaper} />
+        )}
+
         {activeTab === 'authors' && (
           <AuthorsView onSelectPaper={handleSelectPaper} />
         )}
@@ -95,7 +99,9 @@ export default function App() {
       <PaperDetailModal 
         paper={selectedPaper} 
         onClose={() => setSelectedPaper(null)} 
+        onSelectPaper={handleSelectPaper}
       />
     </div>
   );
 }
+

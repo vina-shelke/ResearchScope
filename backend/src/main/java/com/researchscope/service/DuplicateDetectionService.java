@@ -77,23 +77,67 @@ public class DuplicateDetectionService {
             target.setSource(target.getSource() + ", " + source.getSource());
         }
 
+        // Merge Open Access & PDF
+        if (Boolean.TRUE.equals(source.getIsOpenAccess())) {
+            target.setIsOpenAccess(true);
+        }
+        if ((target.getPdfUrl() == null || target.getPdfUrl().isBlank()) && source.getPdfUrl() != null && !source.getPdfUrl().isBlank()) {
+            target.setPdfUrl(source.getPdfUrl());
+        }
+
+        // Merge Paper Type & Publisher
+        if ((target.getPaperType() == null || target.getPaperType().isBlank()) && source.getPaperType() != null && !source.getPaperType().isBlank()) {
+            target.setPaperType(source.getPaperType());
+        }
+        if ((target.getPublisher() == null || target.getPublisher().isBlank()) && source.getPublisher() != null && !source.getPublisher().isBlank()) {
+            target.setPublisher(source.getPublisher());
+        }
+
+        // Merge Retraction
+        if (Boolean.TRUE.equals(source.getIsRetracted())) {
+            target.setIsRetracted(true);
+        }
+
         // Merge authors
         Set<String> authorNames = new HashSet<>();
-        for (AuthorDTO a : target.getAuthors()) authorNames.add(a.getName().toLowerCase());
+        for (AuthorDTO a : target.getAuthors()) {
+            authorNames.add(a.getName().toLowerCase());
+        }
         for (AuthorDTO a : source.getAuthors()) {
             if (!authorNames.contains(a.getName().toLowerCase())) {
                 target.getAuthors().add(a);
                 authorNames.add(a.getName().toLowerCase());
+            } else {
+                // Enrich existing author with orcid if missing
+                for (AuthorDTO existingA : target.getAuthors()) {
+                    if (existingA.getName().equalsIgnoreCase(a.getName()) && existingA.getOrcid() == null && a.getOrcid() != null) {
+                        existingA.setOrcid(a.getOrcid());
+                    }
+                }
             }
         }
 
         // Merge institutions
         Set<String> instNames = new HashSet<>();
-        for (InstitutionDTO inst : target.getInstitutions()) instNames.add(inst.getName().toLowerCase());
+        for (InstitutionDTO inst : target.getInstitutions()) {
+            instNames.add(inst.getName().toLowerCase());
+        }
         for (InstitutionDTO inst : source.getInstitutions()) {
             if (!instNames.contains(inst.getName().toLowerCase())) {
                 target.getInstitutions().add(inst);
                 instNames.add(inst.getName().toLowerCase());
+            } else {
+                // Enrich existing institution with ror / type if missing
+                for (InstitutionDTO existingInst : target.getInstitutions()) {
+                    if (existingInst.getName().equalsIgnoreCase(inst.getName())) {
+                        if (existingInst.getRorId() == null && inst.getRorId() != null) {
+                            existingInst.setRorId(inst.getRorId());
+                        }
+                        if (existingInst.getInstitutionType() == null && inst.getInstitutionType() != null) {
+                            existingInst.setInstitutionType(inst.getInstitutionType());
+                        }
+                    }
+                }
             }
         }
 

@@ -82,11 +82,13 @@ public class CrossrefAdapter {
                 }
             }
 
-            // Container / Venue
+            // Container / Venue & Publisher
             List<String> containerTitles = (List<String>) item.get("container-title");
             if (containerTitles != null && !containerTitles.isEmpty()) {
                 paper.setVenue(containerTitles.get(0));
             }
+            paper.setPublisher((String) item.get("publisher"));
+            paper.setPaperType((String) item.get("type"));
 
             // Citations
             Object isReferencedBy = item.get("is-referenced-by-count");
@@ -94,8 +96,20 @@ public class CrossrefAdapter {
                 paper.setCitationCount(n.intValue());
             }
 
-            // URL
+            // URL & PDF link
             paper.setUrl((String) item.get("URL"));
+            List<Map<String, Object>> links = (List<Map<String, Object>>) item.get("link");
+            if (links != null) {
+                for (Map<String, Object> l : links) {
+                    String contentType = (String) l.get("content-type");
+                    String linkUrl = (String) l.get("URL");
+                    if (linkUrl != null && contentType != null && contentType.toLowerCase().contains("pdf")) {
+                        paper.setPdfUrl(linkUrl);
+                        paper.setIsOpenAccess(true);
+                        break;
+                    }
+                }
+            }
 
             // Authors
             List<Map<String, Object>> authors = (List<Map<String, Object>>) item.get("author");
@@ -104,10 +118,14 @@ public class CrossrefAdapter {
                     String given = (String) author.get("given");
                     String family = (String) author.get("family");
                     String fullName = ((given != null ? given : "") + " " + (family != null ? family : "")).trim();
+                    String orcid = (String) author.get("ORCID");
                     if (!fullName.isEmpty()) {
                         AuthorDTO authorDTO = new AuthorDTO();
                         authorDTO.setId(UUID.nameUUIDFromBytes(fullName.toLowerCase().getBytes()).toString());
                         authorDTO.setName(fullName);
+                        if (orcid != null) {
+                            authorDTO.setOrcid(orcid.replace("https://orcid.org/", "").replace("http://orcid.org/", "").trim());
+                        }
                         paper.getAuthors().add(authorDTO);
                     }
                 }

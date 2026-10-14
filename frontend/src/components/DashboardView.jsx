@@ -125,6 +125,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                   <th>Publication Info</th>
                   <th>DOI</th>
                   <th>Citations</th>
+                  <th>Access</th>
                   <th>Source</th>
                   <th>Action</th>
                 </tr>
@@ -182,6 +183,28 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
 
                       <td style={{ fontWeight: 700, fontSize: '15px', color: 'var(--accent)' }}>
                         {paper.citationCount ?? 0}
+                      </td>
+
+                      <td>
+                        {paper.isOpenAccess ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                              Open Access
+                            </span>
+                            {paper.pdfUrl && (
+                              <a 
+                                href={paper.pdfUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ fontSize: '11px', color: '#047857', textDecoration: 'none', fontWeight: 600 }}
+                              >
+                                PDF ↗
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="tag" style={{ opacity: 0.6 }}>Sub</span>
+                        )}
                       </td>
 
                       <td>

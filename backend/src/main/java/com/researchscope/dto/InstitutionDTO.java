@@ -6,6 +6,8 @@ public class InstitutionDTO {
     private String countryCode;
     private String countryName;
     private Integer paperCount;
+    private String rorId;
+    private String institutionType;
 
     public InstitutionDTO() {}
 
@@ -15,6 +17,16 @@ public class InstitutionDTO {
         this.countryCode = countryCode;
         this.countryName = countryName;
         this.paperCount = paperCount;
+    }
+
+    public InstitutionDTO(String id, String name, String countryCode, String countryName, Integer paperCount, String rorId, String institutionType) {
+        this.id = id;
+        this.name = name;
+        this.countryCode = countryCode;
+        this.countryName = countryName;
+        this.paperCount = paperCount;
+        this.rorId = rorId;
+        this.institutionType = institutionType;
     }
 
     public String getId() { return id; }
@@ -31,4 +43,10 @@ public class InstitutionDTO {
 
     public Integer getPaperCount() { return paperCount; }
     public void setPaperCount(Integer paperCount) { this.paperCount = paperCount; }
+
+    public String getRorId() { return rorId; }
+    public void setRorId(String rorId) { this.rorId = rorId; }
+
+    public String getInstitutionType() { return institutionType; }
+    public void setInstitutionType(String institutionType) { this.institutionType = institutionType; }
 }
