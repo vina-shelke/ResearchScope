@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface PaperAuthorRepository extends JpaRepository<PaperAuthor, PaperAuthor.PaperAuthorId> {
     List<PaperAuthor> findByPaperId(String paperId);
+    List<PaperAuthor> findByPaperIdIn(List<String> paperIds);
     List<PaperAuthor> findByAuthorId(String authorId);
 }

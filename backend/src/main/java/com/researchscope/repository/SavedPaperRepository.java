@@ -13,6 +13,8 @@ public interface SavedPaperRepository extends JpaRepository<SavedPaper, String> 
 
     Optional<SavedPaper> findByPaperId(String paperId);
 
+    List<SavedPaper> findByPaperIdIn(List<String> paperIds);
+
     boolean existsByPaperId(String paperId);
 
     void deleteByPaperId(String paperId);

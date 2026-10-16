@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface PaperInstitutionRepository extends JpaRepository<PaperInstitution, PaperInstitution.PaperInstitutionId> {
     List<PaperInstitution> findByPaperId(String paperId);
+    List<PaperInstitution> findByPaperIdIn(List<String> paperIds);
     List<PaperInstitution> findByInstitutionId(String institutionId);
 }

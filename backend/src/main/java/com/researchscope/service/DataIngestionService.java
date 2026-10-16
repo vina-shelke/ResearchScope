@@ -1,6 +1,7 @@
 package com.researchscope.service;
 
 import com.researchscope.dto.AuthorDTO;
+import com.researchscope.dto.IngestionJobDTO;
 import com.researchscope.dto.InstitutionDTO;
 import com.researchscope.dto.PaperDTO;
 import com.researchscope.dto.TopicDTO;
@@ -82,43 +83,169 @@ public class DataIngestionService {
         this.paperReferenceRepository = paperReferenceRepository;
     }
 
-    @Transactional
+    public IngestionJobDTO startAsyncIngestion(String query) {
+        String queryClean = (query != null && !query.isBlank()) ? query.trim() : "General";
+        String jobId = UUID.randomUUID().toString();
+        IngestionJob job = new IngestionJob();
+        job.setId(jobId);
+        job.setQueryTerm(queryClean);
+        job.setProvider("Unified (OpenAlex, Crossref, Semantic Scholar)");
+        job.setStatus("PROCESSING");
+        job.setPapersFound(0);
+        job.setRecordsInserted(0);
+        job.setDuplicatesDetected(0);
+        ingestionJobRepository.save(job);
+
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                executeIngestion(jobId, queryClean);
+            } catch (Exception e) {
+                log.error("Async ingestion failed for job {}: {}", jobId, e.getMessage(), e);
+                updateJobFailure(jobId, e.getMessage());
+            }
+        });
+
+        return toDTO(job);
+    }
+
     public List<PaperDTO> ingestResearchTopic(String query) {
-        log.info("Starting scholarly data ingestion for topic: '{}'", query);
+        String queryClean = (query != null && !query.isBlank()) ? query.trim() : "General";
+        String jobId = UUID.randomUUID().toString();
+        IngestionJob job = new IngestionJob();
+        job.setId(jobId);
+        job.setQueryTerm(queryClean);
+        job.setProvider("Unified (OpenAlex, Crossref, Semantic Scholar)");
+        job.setStatus("PROCESSING");
+        job.setPapersFound(0);
+        job.setRecordsInserted(0);
+        job.setDuplicatesDetected(0);
+        ingestionJobRepository.save(job);
+
+        try {
+            return executeIngestion(jobId, queryClean);
+        } catch (Exception e) {
+            log.error("Ingestion failed for query {}: {}", queryClean, e.getMessage(), e);
+            updateJobFailure(jobId, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    public List<PaperDTO> executeIngestion(String jobId, String query) {
+        log.info("Starting scholarly data ingestion for topic: '{}' (Job: {})", query, jobId);
 
         List<PaperDTO> rawPapers = new ArrayList<>();
 
         // 1. Fetch from OpenAlex
-        List<PaperDTO> openAlexResults = openAlexAdapter.searchWorks(query, 25);
-        rawPapers.addAll(openAlexResults);
-        recordIngestionJob(query, "OpenAlex", openAlexResults.size());
+        List<PaperDTO> openAlexResults = Collections.emptyList();
+        try {
+            openAlexResults = openAlexAdapter.searchWorks(query, 25);
+            rawPapers.addAll(openAlexResults);
+            recordIngestionJob(query, "OpenAlex", openAlexResults.size());
+        } catch (Exception e) {
+            log.warn("OpenAlex query failed: {}", e.getMessage());
+        }
 
         // 2. Fetch from Crossref
-        List<PaperDTO> crossrefResults = crossrefAdapter.searchWorks(query, 20);
-        rawPapers.addAll(crossrefResults);
-        recordIngestionJob(query, "Crossref", crossrefResults.size());
+        List<PaperDTO> crossrefResults = Collections.emptyList();
+        try {
+            crossrefResults = crossrefAdapter.searchWorks(query, 20);
+            rawPapers.addAll(crossrefResults);
+            recordIngestionJob(query, "Crossref", crossrefResults.size());
+        } catch (Exception e) {
+            log.warn("Crossref query failed: {}", e.getMessage());
+        }
 
         // 3. Fetch from Semantic Scholar
-        List<PaperDTO> semanticResults = semanticScholarAdapter.searchWorks(query, 20);
-        rawPapers.addAll(semanticResults);
-        recordIngestionJob(query, "Semantic Scholar", semanticResults.size());
+        List<PaperDTO> semanticResults = Collections.emptyList();
+        try {
+            semanticResults = semanticScholarAdapter.searchWorks(query, 20);
+            rawPapers.addAll(semanticResults);
+            recordIngestionJob(query, "Semantic Scholar", semanticResults.size());
+        } catch (Exception e) {
+            log.warn("Semantic Scholar query failed: {}", e.getMessage());
+        }
 
         log.info("Total raw papers fetched: OpenAlex={}, Crossref={}, SemanticScholar={}, Total={}",
                 openAlexResults.size(), crossrefResults.size(), semanticResults.size(), rawPapers.size());
 
         // 4. Normalization and Duplicate Detection / Merging
         List<PaperDTO> deduplicatedPapers = duplicateDetectionService.deduplicateAndMerge(rawPapers);
-        log.info("Total deduplicated papers to persist into MySQL: {}", deduplicatedPapers.size());
+        int duplicates = Math.max(0, rawPapers.size() - deduplicatedPapers.size());
+        log.info("Total deduplicated papers to persist into MySQL: {} (duplicates merged: {})", deduplicatedPapers.size(), duplicates);
 
         // 5. Save/Update Entities in Database & Record Source Provenance
         for (PaperDTO paperDTO : deduplicatedPapers) {
-            savePaperEntityGraph(paperDTO);
+            try {
+                savePaperEntityGraph(paperDTO);
+            } catch (Exception e) {
+                log.warn("Error persisting paper '{}': {}", paperDTO.getTitle(), e.getMessage());
+            }
         }
 
         // 6. Build Citation, Reference & Related Relationships between ingested papers
-        linkRelatedAndCitations(deduplicatedPapers);
+        try {
+            linkRelatedAndCitations(deduplicatedPapers);
+        } catch (Exception e) {
+            log.warn("Error linking related/citations: {}", e.getMessage());
+        }
+
+        // 7. Update Job Status
+        if (jobId != null) {
+            try {
+                ingestionJobRepository.findById(jobId).ifPresent(j -> {
+                    j.setPapersFound(rawPapers.size());
+                    j.setRecordsInserted(deduplicatedPapers.size());
+                    j.setDuplicatesDetected(duplicates);
+                    j.setStatus("COMPLETED");
+                    j.setCompletedAt(java.time.LocalDateTime.now());
+                    ingestionJobRepository.save(j);
+                });
+            } catch (Exception e) {
+                log.warn("Could not update ingestion job: {}", e.getMessage());
+            }
+        }
 
         return deduplicatedPapers;
+    }
+
+    private void updateJobFailure(String jobId, String errorMessage) {
+        if (jobId == null) return;
+        try {
+            ingestionJobRepository.findById(jobId).ifPresent(j -> {
+                j.setStatus("FAILED");
+                j.setErrorMessage(errorMessage != null ? errorMessage : "Unknown ingestion error");
+                j.setCompletedAt(java.time.LocalDateTime.now());
+                ingestionJobRepository.save(j);
+            });
+        } catch (Exception e) {
+            log.warn("Could not mark job as failed: {}", e.getMessage());
+        }
+    }
+
+    public Optional<IngestionJobDTO> getJobById(String id) {
+        return ingestionJobRepository.findById(id).map(this::toDTO);
+    }
+
+    public List<IngestionJobDTO> getRecentJobs() {
+        return ingestionJobRepository.findTop10ByOrderByCreatedAtDesc().stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    public IngestionJobDTO toDTO(IngestionJob job) {
+        if (job == null) return null;
+        return new IngestionJobDTO(
+                job.getId(),
+                job.getQueryTerm(),
+                job.getProvider(),
+                job.getPapersFound(),
+                job.getRecordsInserted(),
+                job.getDuplicatesDetected(),
+                job.getStatus(),
+                job.getErrorMessage(),
+                job.getCreatedAt(),
+                job.getCompletedAt()
+        );
     }
 
     private void recordIngestionJob(String queryTerm, String provider, int count) {
@@ -128,7 +255,11 @@ public class DataIngestionService {
                     queryTerm,
                     provider,
                     count,
-                    "COMPLETED"
+                    count,
+                    0,
+                    "COMPLETED",
+                    null,
+                    java.time.LocalDateTime.now()
             );
             ingestionJobRepository.save(job);
         } catch (Exception e) {

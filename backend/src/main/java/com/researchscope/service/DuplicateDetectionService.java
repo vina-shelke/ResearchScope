@@ -25,7 +25,10 @@ public class DuplicateDetectionService {
         List<PaperDTO> mergedList = new ArrayList<>();
 
         for (PaperDTO paper : rawPapers) {
-            String doiKey = (paper.getDoi() != null && !paper.getDoi().isBlank()) ? paper.getDoi().toLowerCase().trim() : null;
+            String doiKey = normalizeDoi(paper.getDoi());
+            if (doiKey != null) {
+                paper.setDoi(doiKey);
+            }
             String titleKey = normalizeTitle(paper.getTitle());
             String authorKey = getFirstAuthorKey(paper.getAuthors());
             Integer yearKey = paper.getPublicationYear();
@@ -165,5 +168,13 @@ public class DuplicateDetectionService {
     private String getFirstAuthorKey(List<AuthorDTO> authors) {
         if (authors == null || authors.isEmpty()) return "";
         return authors.get(0).getName().toLowerCase().replaceAll("[^a-z]", "");
+    }
+
+    public String normalizeDoi(String doi) {
+        if (doi == null || doi.isBlank()) return null;
+        String clean = doi.trim().toLowerCase();
+        clean = clean.replaceFirst("^https?://(dx\\.)?doi\\.org/", "");
+        clean = clean.replaceFirst("^doi:", "");
+        return clean.trim();
     }
 }

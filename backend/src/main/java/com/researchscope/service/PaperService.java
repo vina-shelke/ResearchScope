@@ -57,6 +57,14 @@ public class PaperService {
         this.savedPaperRepository = savedPaperRepository;
     }
 
+    public static String normalizeDoi(String doi) {
+        if (doi == null || doi.isBlank()) return null;
+        String clean = doi.trim();
+        clean = clean.replaceFirst("^(?i)https?://(dx\\.)?doi\\.org/", "");
+        clean = clean.replaceFirst("^(?i)doi:", "");
+        return clean.trim();
+    }
+
     public PaginatedResponse<PaperDTO> searchPapers(
             String query,
             Integer year,
@@ -84,18 +92,29 @@ public class PaperService {
             int page,
             int size
     ) {
-        Sort sort = Sort.by(Sort.Direction.DESC, "publicationYear");
-        if ("citationCount".equalsIgnoreCase(sortBy)) {
-            sort = Sort.by("asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC, "citationCount");
-        } else if ("publicationYear".equalsIgnoreCase(sortBy)) {
-            sort = Sort.by("asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC, "publicationYear");
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort;
+        if ("citationCount".equalsIgnoreCase(sortBy) || "citations".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(direction, "citationCount");
+        } else if ("newest".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(Sort.Direction.DESC, "publicationYear");
+        } else if ("oldest".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(Sort.Direction.ASC, "publicationYear");
         } else if ("title".equalsIgnoreCase(sortBy)) {
-            sort = Sort.by("asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC, "title");
+            sort = Sort.by(direction, "title");
+        } else if ("relevance".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by(Sort.Direction.DESC, "citationCount").and(Sort.by(Sort.Direction.DESC, "publicationYear"));
+        } else {
+            sort = Sort.by(direction, "publicationYear");
         }
 
         Pageable pageable = PageRequest.of(page, size, sort);
+        String trimmedQuery = (query != null && !query.isBlank()) ? query.trim() : null;
+        String normalizedDoi = normalizeDoi(trimmedQuery);
+        String effectiveQuery = (normalizedDoi != null && !normalizedDoi.isBlank()) ? normalizedDoi : trimmedQuery;
+
         Page<Paper> paperPage = paperRepository.searchPapersExtended(
-                (query != null && !query.isBlank()) ? query.trim() : null,
+                effectiveQuery,
                 year,
                 (source != null && !source.isBlank()) ? source.trim() : null,
                 minCitations,
@@ -106,9 +125,7 @@ public class PaperService {
                 pageable
         );
 
-        List<PaperDTO> dtos = paperPage.getContent().stream()
-                .map(this::toPaperDTO)
-                .toList();
+        List<PaperDTO> dtos = toPaperDTOs(paperPage.getContent());
 
         return new PaginatedResponse<>(
                 dtos,
@@ -132,32 +149,125 @@ public class PaperService {
 
     public List<PaperDTO> getRelatedPapers(String paperId) {
         List<RelatedPaper> rels = relatedPaperRepository.findByPaperId(paperId);
-        List<PaperDTO> list = new ArrayList<>();
-        for (RelatedPaper rel : rels) {
-            paperRepository.findById(rel.getRelatedPaperId()).ifPresent(p -> list.add(toPaperDTO(p)));
-        }
-        return list;
+        List<String> relatedIds = rels.stream().map(RelatedPaper::getRelatedPaperId).toList();
+        List<Paper> papers = paperRepository.findAllById(relatedIds);
+        return toPaperDTOs(papers);
     }
 
     public List<PaperDTO> getCitationsForPaper(String paperId) {
         List<PaperCitation> citations = paperCitationRepository.findByCitedPaperId(paperId);
-        List<PaperDTO> list = new ArrayList<>();
-        for (PaperCitation pc : citations) {
-            paperRepository.findById(pc.getCitingPaperId()).ifPresent(p -> list.add(toPaperDTO(p)));
-        }
-        return list;
+        List<String> citingIds = citations.stream().map(PaperCitation::getCitingPaperId).toList();
+        List<Paper> papers = paperRepository.findAllById(citingIds);
+        return toPaperDTOs(papers);
     }
 
     public List<PaperDTO> getReferencesForPaper(String paperId) {
         List<PaperReference> refs = paperReferenceRepository.findByPaperId(paperId);
-        List<PaperDTO> list = new ArrayList<>();
-        for (PaperReference pr : refs) {
-            paperRepository.findById(pr.getReferencedPaperId()).ifPresent(p -> list.add(toPaperDTO(p)));
+        List<String> refIds = refs.stream().map(PaperReference::getReferencedPaperId).toList();
+        List<Paper> papers = paperRepository.findAllById(refIds);
+        return toPaperDTOs(papers);
+    }
+
+    public List<PaperDTO> toPaperDTOs(List<Paper> papers) {
+        if (papers == null || papers.isEmpty()) {
+            return Collections.emptyList();
         }
-        return list;
+
+        List<String> paperIds = papers.stream().map(Paper::getId).toList();
+
+        // 1. Fetch saved paper mappings
+        Map<String, SavedPaper> savedMap = savedPaperRepository.findByPaperIdIn(paperIds).stream()
+                .collect(Collectors.toMap(SavedPaper::getPaperId, sp -> sp, (a, b) -> a));
+
+        // 2. Fetch paper authors and author details
+        List<PaperAuthor> allPaperAuthors = paperAuthorRepository.findByPaperIdIn(paperIds);
+        List<String> authorIds = allPaperAuthors.stream().map(PaperAuthor::getAuthorId).distinct().toList();
+        Map<String, Author> authorMap = authorRepository.findAllById(authorIds).stream()
+                .collect(Collectors.toMap(Author::getId, a -> a, (a, b) -> a));
+        Map<String, List<PaperAuthor>> paperAuthorsByPaper = allPaperAuthors.stream()
+                .sorted(Comparator.comparing(PaperAuthor::getAuthorOrder, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.groupingBy(PaperAuthor::getPaperId));
+
+        // 3. Fetch paper institutions and institution details
+        List<PaperInstitution> allPaperInstitutions = paperInstitutionRepository.findByPaperIdIn(paperIds);
+        List<String> instIds = allPaperInstitutions.stream().map(PaperInstitution::getInstitutionId).distinct().toList();
+        Map<String, Institution> instMap = institutionRepository.findAllById(instIds).stream()
+                .collect(Collectors.toMap(Institution::getId, i -> i, (a, b) -> a));
+        Map<String, List<PaperInstitution>> paperInstsByPaper = allPaperInstitutions.stream()
+                .collect(Collectors.groupingBy(PaperInstitution::getPaperId));
+
+        // 4. Fetch paper topics and topic details
+        List<PaperTopic> allPaperTopics = paperTopicRepository.findByPaperIdIn(paperIds);
+        List<String> topicIds = allPaperTopics.stream().map(PaperTopic::getTopicId).distinct().toList();
+        Map<String, Topic> topicMap = topicRepository.findAllById(topicIds).stream()
+                .collect(Collectors.toMap(Topic::getId, t -> t, (a, b) -> a));
+        Map<String, List<PaperTopic>> paperTopicsByPaper = allPaperTopics.stream()
+                .collect(Collectors.groupingBy(PaperTopic::getPaperId));
+
+        // 5. Fetch paper countries
+        List<PaperCountry> allPaperCountries = paperCountryRepository.findByPaperIdIn(paperIds);
+        Map<String, List<PaperCountry>> paperCountriesByPaper = allPaperCountries.stream()
+                .collect(Collectors.groupingBy(PaperCountry::getPaperId));
+
+        // Construct DTOs
+        List<PaperDTO> dtoList = new ArrayList<>(papers.size());
+        for (Paper paper : papers) {
+            PaperDTO dto = mapPaperToDTOBase(paper);
+
+            // Saved status
+            SavedPaper sp = savedMap.get(paper.getId());
+            if (sp != null) {
+                dto.setIsSaved(true);
+                dto.setSavedCollection(sp.getCollectionName());
+                dto.setSavedNotes(sp.getNotes());
+            }
+
+            // Authors
+            List<PaperAuthor> pas = paperAuthorsByPaper.getOrDefault(paper.getId(), Collections.emptyList());
+            for (PaperAuthor pa : pas) {
+                Author a = authorMap.get(pa.getAuthorId());
+                if (a != null) {
+                    dto.getAuthors().add(new AuthorDTO(a.getId(), a.getName(), a.getOpenAlexId(), a.getOrcid(), a.getPaperCount(), a.getCitationCount()));
+                }
+            }
+
+            // Institutions
+            List<PaperInstitution> pis = paperInstsByPaper.getOrDefault(paper.getId(), Collections.emptyList());
+            for (PaperInstitution pi : pis) {
+                Institution inst = instMap.get(pi.getInstitutionId());
+                if (inst != null) {
+                    dto.getInstitutions().add(new InstitutionDTO(inst.getId(), inst.getName(), inst.getCountryCode(), inst.getCountryCode(), inst.getPaperCount(), inst.getRorId(), inst.getInstitutionType()));
+                }
+            }
+
+            // Topics
+            List<PaperTopic> pts = paperTopicsByPaper.getOrDefault(paper.getId(), Collections.emptyList());
+            for (PaperTopic pt : pts) {
+                Topic t = topicMap.get(pt.getTopicId());
+                if (t != null) {
+                    dto.getTopics().add(new TopicDTO(t.getId(), t.getName(), t.getCategory(), t.getPaperCount()));
+                }
+            }
+
+            // Countries
+            List<PaperCountry> pcs = paperCountriesByPaper.getOrDefault(paper.getId(), Collections.emptyList());
+            for (PaperCountry pc : pcs) {
+                dto.getCountries().add(pc.getCountryCode());
+            }
+
+            dtoList.add(dto);
+        }
+
+        return dtoList;
     }
 
     public PaperDTO toPaperDTO(Paper paper) {
+        if (paper == null) return null;
+        List<PaperDTO> list = toPaperDTOs(List.of(paper));
+        return list.isEmpty() ? null : list.get(0);
+    }
+
+    private PaperDTO mapPaperToDTOBase(Paper paper) {
         PaperDTO dto = new PaperDTO();
         dto.setId(paper.getId());
         dto.setTitle(paper.getTitle());
@@ -170,50 +280,11 @@ public class PaperService {
         dto.setSource(paper.getSource());
         dto.setSourceId(paper.getSourceId());
         dto.setUrl(paper.getUrl());
-
         dto.setIsOpenAccess(paper.getIsOpenAccess() != null ? paper.getIsOpenAccess() : false);
         dto.setPdfUrl(paper.getPdfUrl());
         dto.setPaperType(paper.getPaperType());
         dto.setPublisher(paper.getPublisher());
         dto.setIsRetracted(paper.getIsRetracted() != null ? paper.getIsRetracted() : false);
-
-        // Saved bookmark status
-        savedPaperRepository.findByPaperId(paper.getId()).ifPresent(sp -> {
-            dto.setIsSaved(true);
-            dto.setSavedCollection(sp.getCollectionName());
-            dto.setSavedNotes(sp.getNotes());
-        });
-
-        // Authors
-        List<PaperAuthor> pas = paperAuthorRepository.findByPaperId(paper.getId());
-        for (PaperAuthor pa : pas) {
-            authorRepository.findById(pa.getAuthorId()).ifPresent(a ->
-                    dto.getAuthors().add(new AuthorDTO(a.getId(), a.getName(), a.getOpenAlexId(), a.getOrcid(), a.getPaperCount(), a.getCitationCount()))
-            );
-        }
-
-        // Institutions
-        List<PaperInstitution> pis = paperInstitutionRepository.findByPaperId(paper.getId());
-        for (PaperInstitution pi : pis) {
-            institutionRepository.findById(pi.getInstitutionId()).ifPresent(inst ->
-                    dto.getInstitutions().add(new InstitutionDTO(inst.getId(), inst.getName(), inst.getCountryCode(), inst.getCountryCode(), inst.getPaperCount(), inst.getRorId(), inst.getInstitutionType()))
-            );
-        }
-
-        // Topics
-        List<PaperTopic> pts = paperTopicRepository.findByPaperId(paper.getId());
-        for (PaperTopic pt : pts) {
-            topicRepository.findById(pt.getTopicId()).ifPresent(t ->
-                    dto.getTopics().add(new TopicDTO(t.getId(), t.getName(), t.getCategory(), t.getPaperCount()))
-            );
-        }
-
-        // Countries
-        List<PaperCountry> pcs = paperCountryRepository.findByPaperId(paper.getId());
-        for (PaperCountry pc : pcs) {
-            dto.getCountries().add(pc.getCountryCode());
-        }
-
         return dto;
     }
 

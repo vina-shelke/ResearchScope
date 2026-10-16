@@ -20,7 +20,7 @@ public interface PaperRepository extends JpaRepository<Paper, String> {
 
     @Query("""
         SELECT p FROM Paper p
-        WHERE (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.abstractText) LIKE LOWER(CONCAT('%', :query, '%')))
+        WHERE (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.abstractText) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.doi) LIKE LOWER(CONCAT('%', :query, '%')))
           AND (:year IS NULL OR p.publicationYear = :year)
           AND (:source IS NULL OR LOWER(p.source) LIKE LOWER(CONCAT('%', :source, '%')))
           AND (:minCitations IS NULL OR p.citationCount >= :minCitations)
@@ -39,7 +39,7 @@ public interface PaperRepository extends JpaRepository<Paper, String> {
         LEFT JOIN Author a ON pa.authorId = a.id
         LEFT JOIN PaperInstitution pi ON p.id = pi.paperId
         LEFT JOIN Institution inst ON pi.institutionId = inst.id
-        WHERE (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.abstractText) LIKE LOWER(CONCAT('%', :query, '%')))
+        WHERE (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.abstractText) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.doi) LIKE LOWER(CONCAT('%', :query, '%')))
           AND (:year IS NULL OR p.publicationYear = :year)
           AND (:source IS NULL OR LOWER(p.source) LIKE LOWER(CONCAT('%', :source, '%')))
           AND (:minCitations IS NULL OR p.citationCount >= :minCitations)
@@ -60,8 +60,31 @@ public interface PaperRepository extends JpaRepository<Paper, String> {
         Pageable pageable
     );
 
+    @Query("SELECT COALESCE(SUM(p.citationCount), 0) FROM Paper p")
+    Long sumCitationCount();
+
+    @Query("SELECT COUNT(p) FROM Paper p WHERE p.isOpenAccess = true")
+    Long countOpenAccess();
+
     @Query("SELECT p.publicationYear, COUNT(p) FROM Paper p WHERE p.publicationYear IS NOT NULL GROUP BY p.publicationYear ORDER BY p.publicationYear ASC")
     List<Object[]> findPublicationTrend();
+
+    @Query("""
+        SELECT p.publicationYear, COUNT(p)
+        FROM Paper p
+        WHERE (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.abstractText) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.doi) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND p.publicationYear IS NOT NULL
+        GROUP BY p.publicationYear
+        ORDER BY p.publicationYear ASC
+    """)
+    List<Object[]> findPublicationTrendByQuery(@Param("query") String query);
+
+    @Query("""
+        SELECT p FROM Paper p
+        WHERE (:query IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.abstractText) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.doi) LIKE LOWER(CONCAT('%', :query, '%')))
+        ORDER BY p.citationCount DESC
+    """)
+    List<Paper> findTopCitedPapersByQuery(@Param("query") String query, Pageable pageable);
 
     @Query("SELECT p FROM Paper p ORDER BY p.citationCount DESC")
     List<Paper> findTopCitedPapers(Pageable pageable);
