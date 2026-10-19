@@ -8,15 +8,26 @@ public class ResearchGraphDTO {
     public static class Node {
         private String id;
         private String label;
-        private String type; // Paper, Author, Institution, Topic, Citation
+        private String type; // Paper, Author, Institution, Topic
         private Integer value; // Citation count or Paper count
+        private Integer year;
+        private String detail;
+        private String doi;
 
         public Node() {}
+
         public Node(String id, String label, String type, Integer value) {
+            this(id, label, type, value, null, null, null);
+        }
+
+        public Node(String id, String label, String type, Integer value, Integer year, String detail, String doi) {
             this.id = id;
             this.label = label;
             this.type = type;
             this.value = value;
+            this.year = year;
+            this.detail = detail;
+            this.doi = doi;
         }
 
         public String getId() { return id; }
@@ -30,12 +41,21 @@ public class ResearchGraphDTO {
 
         public Integer getValue() { return value; }
         public void setValue(Integer value) { this.value = value; }
+
+        public Integer getYear() { return year; }
+        public void setYear(Integer year) { this.year = year; }
+
+        public String getDetail() { return detail; }
+        public void setDetail(String detail) { this.detail = detail; }
+
+        public String getDoi() { return doi; }
+        public void setDoi(String doi) { this.doi = doi; }
     }
 
     public static class Link {
         private String source;
         private String target;
-        private String relationship;
+        private String relationship; // WROTE, HAS_TOPIC, AFFILIATED_WITH, CITES, SIMILAR_TOPIC
 
         public Link() {}
         public Link(String source, String target, String relationship) {

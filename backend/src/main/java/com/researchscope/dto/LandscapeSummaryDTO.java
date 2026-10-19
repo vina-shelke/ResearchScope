@@ -19,6 +19,14 @@ public class LandscapeSummaryDTO {
     private List<Map<String, Object>> countriesDistribution;
     private List<PaperDTO> topCitedPapers;
 
+    // Feature 4: Trend and Emerging Analytics
+    private List<Map<String, Object>> topicTrendsOverTime;
+    private List<Map<String, Object>> emergingKeywords;
+    private Map<String, Object> collaborationStats;
+    private List<PaperDTO> recentlyPublishedPapers;
+    private long uniquePublicationsCount;
+    private long rawRecordsRetrievedCount;
+
     public LandscapeSummaryDTO() {}
 
     public LandscapeSummaryDTO(
@@ -34,7 +42,13 @@ public class LandscapeSummaryDTO {
             List<TopicDTO> emergingTopics,
             List<InstitutionDTO> topInstitutions,
             List<Map<String, Object>> countriesDistribution,
-            List<PaperDTO> topCitedPapers
+            List<PaperDTO> topCitedPapers,
+            List<Map<String, Object>> topicTrendsOverTime,
+            List<Map<String, Object>> emergingKeywords,
+            Map<String, Object> collaborationStats,
+            List<PaperDTO> recentlyPublishedPapers,
+            long uniquePublicationsCount,
+            long rawRecordsRetrievedCount
     ) {
         this.query = query;
         this.totalPapers = totalPapers;
@@ -49,6 +63,12 @@ public class LandscapeSummaryDTO {
         this.topInstitutions = topInstitutions;
         this.countriesDistribution = countriesDistribution;
         this.topCitedPapers = topCitedPapers;
+        this.topicTrendsOverTime = topicTrendsOverTime;
+        this.emergingKeywords = emergingKeywords;
+        this.collaborationStats = collaborationStats;
+        this.recentlyPublishedPapers = recentlyPublishedPapers;
+        this.uniquePublicationsCount = uniquePublicationsCount;
+        this.rawRecordsRetrievedCount = rawRecordsRetrievedCount;
     }
 
     public String getQuery() { return query; }
@@ -89,4 +109,22 @@ public class LandscapeSummaryDTO {
 
     public List<PaperDTO> getTopCitedPapers() { return topCitedPapers; }
     public void setTopCitedPapers(List<PaperDTO> topCitedPapers) { this.topCitedPapers = topCitedPapers; }
+
+    public List<Map<String, Object>> getTopicTrendsOverTime() { return topicTrendsOverTime; }
+    public void setTopicTrendsOverTime(List<Map<String, Object>> topicTrendsOverTime) { this.topicTrendsOverTime = topicTrendsOverTime; }
+
+    public List<Map<String, Object>> getEmergingKeywords() { return emergingKeywords; }
+    public void setEmergingKeywords(List<Map<String, Object>> emergingKeywords) { this.emergingKeywords = emergingKeywords; }
+
+    public Map<String, Object> getCollaborationStats() { return collaborationStats; }
+    public void setCollaborationStats(Map<String, Object> collaborationStats) { this.collaborationStats = collaborationStats; }
+
+    public List<PaperDTO> getRecentlyPublishedPapers() { return recentlyPublishedPapers; }
+    public void setRecentlyPublishedPapers(List<PaperDTO> recentlyPublishedPapers) { this.recentlyPublishedPapers = recentlyPublishedPapers; }
+
+    public long getUniquePublicationsCount() { return uniquePublicationsCount; }
+    public void setUniquePublicationsCount(long uniquePublicationsCount) { this.uniquePublicationsCount = uniquePublicationsCount; }
+
+    public long getRawRecordsRetrievedCount() { return rawRecordsRetrievedCount; }
+    public void setRawRecordsRetrievedCount(long rawRecordsRetrievedCount) { this.rawRecordsRetrievedCount = rawRecordsRetrievedCount; }
 }

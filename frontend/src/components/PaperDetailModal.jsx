@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { savePaper, removeSavedPaper, fetchPaperReferences, getPaperBibTeXUrl } from '../api/client';
+import { 
+  savePaper, 
+  removeSavedPaper, 
+  fetchPaperReferences, 
+  fetchPaperRecommendations,
+  getPaperBibTeXUrl 
+} from '../api/client';
 
-export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
+export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddToCompare, comparisonIds = [] }) {
   if (!paper) return null;
 
   const [isSaved, setIsSaved] = useState(Boolean(paper.isSaved));
@@ -11,6 +17,8 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
   const [savingStatus, setSavingStatus] = useState('');
   const [references, setReferences] = useState(paper.references || []);
   const [loadingRefs, setLoadingRefs] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
 
   useEffect(() => {
     setIsSaved(Boolean(paper.isSaved));
@@ -28,6 +36,15 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
         .finally(() => setLoadingRefs(false));
     } else {
       setReferences(paper.references || []);
+    }
+
+    // Fetch explainable recommendations
+    if (paper.id) {
+      setLoadingRecs(true);
+      fetchPaperRecommendations(paper.id, 5)
+        .then(recs => setRecommendations(recs || []))
+        .catch(err => console.error('Error fetching paper recommendations:', err))
+        .finally(() => setLoadingRecs(false));
     }
   }, [paper.id]);
 
@@ -66,14 +83,15 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
     }
   };
 
-  // Determine official publisher page or verified source URL
   const targetUrl = paper.doi && paper.doi.trim() 
     ? (paper.doi.startsWith('http') ? paper.doi : `https://doi.org/${paper.doi.trim()}`)
     : (paper.url && paper.url.trim() ? paper.url.trim() : null);
 
+  const inCompare = comparisonIds.includes(String(paper.id));
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '850px', maxHeight: '90vh' }}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '880px', maxHeight: '90vh' }}>
         <div className="modal-header">
           <div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
@@ -296,6 +314,71 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
             </div>
           )}
 
+          {/* Explainable Related Recommendations */}
+          <div className="detail-section">
+            <div className="detail-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Recommended Related Publications ({recommendations.length})</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Explainable recommendation engine</span>
+            </div>
+
+            {loadingRecs ? (
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Analyzing semantic and citation links...</div>
+            ) : recommendations.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {recommendations.map((rec) => {
+                  const targetPaper = rec.paper;
+                  if (!targetPaper) return null;
+                  return (
+                    <div 
+                      key={targetPaper.id}
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '10px 14px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div 
+                          className="table-link" 
+                          onClick={() => onSelectPaper && onSelectPaper(targetPaper.id)}
+                          style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}
+                        >
+                          {targetPaper.title}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span>{targetPaper.publicationYear || 'Year n/a'}</span>
+                          <span>•</span>
+                          <span>{targetPaper.venue || 'Venue n/a'}</span>
+                          <span>•</span>
+                          <span><strong>{targetPaper.citationCount || 0}</strong> citations</span>
+                          <span className="tag" style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', fontSize: '11px' }}>
+                            {rec.rationale}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => onSelectPaper && onSelectPaper(targetPaper.id)}
+                      >
+                        Inspect
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                No closely related recommendations discovered yet for this record.
+              </div>
+            )}
+          </div>
+
           {/* References Section */}
           <div className="detail-section">
             <div className="detail-label">References & Cited Works ({references.length})</div>
@@ -323,26 +406,6 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
               </div>
             )}
           </div>
-
-          {/* Related Research */}
-          {paper.relatedPapers && paper.relatedPapers.length > 0 && (
-            <div className="detail-section">
-              <div className="detail-label">Related Research ({paper.relatedPapers.length})</div>
-              <ul style={{ listStyleType: 'disc', paddingLeft: '20px', fontSize: '13px', margin: 0 }}>
-                {paper.relatedPapers.map((rel, idx) => (
-                  <li key={rel.id || idx} style={{ marginBottom: '6px' }}>
-                    <span 
-                      className="table-link" 
-                      onClick={() => onSelectPaper && onSelectPaper(rel.id)}
-                      style={{ fontWeight: 600 }}
-                    >
-                      {rel.title}
-                    </span> ({rel.publicationYear || 'N/A'})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
 
         {/* Modal Bottom Action Bar */}
@@ -375,6 +438,16 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper }) {
                 View / Download PDF ↗
               </a>
             ) : null}
+
+            {onAddToCompare && (
+              <button
+                type="button"
+                className={`btn btn-sm ${inCompare ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => onAddToCompare(paper.id)}
+              >
+                {inCompare ? '✓ In Compare' : '+ Add to Compare'}
+              </button>
+            )}
 
             <a 
               href={getPaperBibTeXUrl(paper.id)}

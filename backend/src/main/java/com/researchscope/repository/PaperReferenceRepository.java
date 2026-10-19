@@ -11,6 +11,8 @@ public interface PaperReferenceRepository extends JpaRepository<PaperReference, 
 
     List<PaperReference> findByPaperId(String paperId);
 
+    List<PaperReference> findByPaperIdIn(List<String> paperIds);
+
     List<PaperReference> findByReferencedPaperId(String referencedPaperId);
 
     boolean existsByPaperIdAndReferencedPaperId(String paperId, String referencedPaperId);

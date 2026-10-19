@@ -15,9 +15,21 @@ import java.util.List;
 public class PaperController {
 
     private final PaperService paperService;
+    private final com.researchscope.service.SemanticSearchService semanticSearchService;
 
-    public PaperController(PaperService paperService) {
+    public PaperController(PaperService paperService, com.researchscope.service.SemanticSearchService semanticSearchService) {
         this.paperService = paperService;
+        this.semanticSearchService = semanticSearchService;
+    }
+
+    @GetMapping("/semantic")
+    public ResponseEntity<PaginatedResponse<PaperDTO>> searchSemantic(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size
+    ) {
+        PaginatedResponse<PaperDTO> response = semanticSearchService.searchPapersSemantic(query, page, size);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
@@ -52,6 +64,15 @@ public class PaperController {
     public ResponseEntity<List<PaperDTO>> getRelatedPapers(@PathVariable("id") String id) {
         List<PaperDTO> related = paperService.getRelatedPapers(id);
         return ResponseEntity.ok(related);
+    }
+
+    @GetMapping("/{id}/recommendations")
+    public ResponseEntity<List<com.researchscope.dto.PaperRecommendationDTO>> getRecommendations(
+            @PathVariable("id") String id,
+            @RequestParam(value = "limit", defaultValue = "5") int limit
+    ) {
+        List<com.researchscope.dto.PaperRecommendationDTO> recs = semanticSearchService.getRecommendationsForPaper(id, limit);
+        return ResponseEntity.ok(recs);
     }
 
     @GetMapping("/{id}/citations")
