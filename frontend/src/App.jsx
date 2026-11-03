@@ -13,13 +13,92 @@ import CitationsView from './components/CitationsView';
 import SavedPapersView from './components/SavedPapersView';
 import PaperDetailModal from './components/PaperDetailModal';
 import { fetchLandscape, fetchPaperById } from './api/client';
+import { useToast } from './components/Toast';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const toast = useToast();
+
+  // Read URL query parameters on initial mount
+  const getInitialUrlState = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        tab: params.get('tab') || 'dashboard',
+        query: params.get('q') || ''
+      };
+    } catch {
+      return { tab: 'dashboard', query: '' };
+    }
+  };
+
+  const initialUrlState = getInitialUrlState();
+  const [activeTab, setActiveTab] = useState(initialUrlState.tab);
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [selectedPaper, setSelectedPaper] = useState(null);
-  const [currentQuery, setCurrentQuery] = useState('');
+  const [currentQuery, setCurrentQuery] = useState(initialUrlState.query);
+
+  // Sync state to URL without reloading
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (activeTab && activeTab !== 'dashboard') {
+        params.set('tab', activeTab);
+      } else {
+        params.delete('tab');
+      }
+
+      if (currentQuery && currentQuery.trim()) {
+        params.set('q', currentQuery.trim());
+      } else {
+        params.delete('q');
+      }
+
+      const queryString = params.toString();
+      const newUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+      window.history.replaceState({ tab: activeTab, q: currentQuery }, '', newUrl);
+    } catch {
+      // ignore
+    }
+  }, [activeTab, currentQuery]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (e) => {
+      const params = new URLSearchParams(window.location.search);
+      const targetTab = params.get('tab') || 'dashboard';
+      const targetQuery = params.get('q') || '';
+      setActiveTab(targetTab);
+      setCurrentQuery(targetQuery);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Dark / Light Theme state
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('researchscope_theme');
+      if (saved) return saved;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('researchscope_theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   // Comparison tray state: store selected paper IDs for side-by-side comparison
   const [comparisonIds, setComparisonIds] = useState(() => {
@@ -43,12 +122,14 @@ export default function App() {
     const idStr = String(paperId);
     setComparisonIds(prev => {
       if (prev.includes(idStr)) {
+        toast.info('Removed paper from comparison tray.');
         return prev.filter(id => id !== idStr);
       } else {
         if (prev.length >= 4) {
-          alert('You can compare up to 4 research papers simultaneously.');
+          toast.warning('Comparison limit reached: maximum 4 papers can be evaluated concurrently.');
           return prev;
         }
+        toast.success(`Paper added to comparison tray (${prev.length + 1}/4).`);
         return [...prev, idStr];
       }
     });
@@ -57,10 +138,12 @@ export default function App() {
   const handleRemoveFromCompare = (paperId) => {
     const idStr = String(paperId);
     setComparisonIds(prev => prev.filter(id => id !== idStr));
+    toast.info('Paper removed from comparison.');
   };
 
   const handleClearCompare = () => {
     setComparisonIds([]);
+    toast.info('Comparison tray cleared.');
   };
 
   const loadLandscape = (query = '') => {
@@ -100,6 +183,8 @@ export default function App() {
         setActiveTab={setActiveTab} 
         onSearch={handleGlobalSearch} 
         comparisonCount={comparisonIds.length}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       <main className="main-content">
@@ -180,20 +265,7 @@ export default function App() {
 
       {/* Floating Comparison Tray Shortcut when papers are selected and not currently on comparison tab */}
       {comparisonIds.length > 0 && activeTab !== 'comparison' && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          backgroundColor: '#0f172a',
-          color: '#ffffff',
-          borderRadius: 'var(--radius-md)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-          padding: '12px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-          zIndex: 900
-        }}>
+        <div className="floating-comparison-tray">
           <div>
             <span style={{ fontWeight: 700, fontSize: '13px' }}>
               Comparison Tray: {comparisonIds.length} / 4 papers selected
@@ -203,12 +275,12 @@ export default function App() {
             className="btn btn-primary btn-sm"
             onClick={() => setActiveTab('comparison')}
           >
-            Open Comparison Lab →
+            Open Comparison Lab
           </button>
           <button
             className="btn btn-secondary btn-sm"
             onClick={handleClearCompare}
-            style={{ color: '#94a3b8', borderColor: '#334155', backgroundColor: '#1e293b' }}
+            style={{ color: 'var(--text-muted)', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-alt)' }}
           >
             Clear
           </button>

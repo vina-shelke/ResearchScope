@@ -55,12 +55,12 @@ export default function TopicsView({ onSelectPaper }) {
         </div>
       </div>
 
-      <div className="panel" style={{ marginBottom: '20px' }}>
+      <div className="panel" style={{ marginBottom: '20px', padding: '16px 20px' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input 
             type="text" 
             className="search-input" 
-            style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', flex: 1, minWidth: '220px' }}
+            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', flex: 1, minWidth: '220px' }}
             placeholder="Search topic or concept..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -70,7 +70,7 @@ export default function TopicsView({ onSelectPaper }) {
             <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Rows:</span>
             <select
               className="search-input"
-              style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: 'auto', padding: '8px 10px', fontSize: '13px' }}
+              style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: 'auto', padding: '8px 10px', fontSize: '13px' }}
               value={pageSize}
               onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
             >

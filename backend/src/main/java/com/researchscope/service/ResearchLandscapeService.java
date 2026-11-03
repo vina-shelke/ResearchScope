@@ -8,6 +8,7 @@ import com.researchscope.entity.Institution;
 import com.researchscope.entity.Paper;
 import com.researchscope.entity.Topic;
 import com.researchscope.repository.*;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,7 @@ public class ResearchLandscapeService {
         this.paperService = paperService;
     }
 
+    @Cacheable(value = "landscapeSummary", key = "'default'", condition = "#query == null || #query.trim().isEmpty()")
     public LandscapeSummaryDTO getResearchLandscape(String query) {
         boolean hasQuery = (query != null && !query.isBlank());
         if (hasQuery) {

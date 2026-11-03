@@ -48,12 +48,12 @@ export default function AuthorsView({ onSelectPaper }) {
         <div className="section-description">Analyze scholarly authors, active publication counts, and research impact across institutions</div>
       </div>
 
-      <div className="panel" style={{ marginBottom: '20px' }}>
+      <div className="panel" style={{ marginBottom: '20px', padding: '16px 20px' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px' }}>
           <input 
             type="text" 
             className="search-input" 
-            style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', flex: 1 }}
+            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', flex: 1 }}
             placeholder="Search author by name..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -6,8 +6,11 @@ import {
   removeSavedPaper,
   createSavedSearch,
   getPapersCsvExportUrl, 
-  getPapersBibTeXExportUrl 
+  getPapersBibTeXExportUrl,
+  getPapersRisExportUrl 
 } from '../api/client';
+import { IconBookmark, IconSparkles, IconDownload } from './Icons';
+import { SkeletonTableRow } from './SkeletonLoader';
 
 export default function PapersView({ onSelectPaper, onAddToCompare, comparisonIds = [] }) {
   const [searchMode, setSearchMode] = useState('standard'); // 'standard' or 'semantic'
@@ -142,7 +145,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
             onClick={handleSaveCurrentSearch}
             title="Save current search criteria to Workspace"
           >
-            ★ Save Search Query
+            <IconBookmark size={13} /> Save Search Query
           </button>
           {saveSearchStatus && (
             <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{saveSearchStatus}</span>
@@ -152,17 +155,25 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
             href={getPapersCsvExportUrl(filterParams)}
             download="research-papers.csv"
             className="btn btn-secondary btn-sm"
-            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            style={{ textDecoration: 'none' }}
           >
-            Export CSV
+            <IconDownload size={13} /> Export CSV
           </a>
           <a 
             href={getPapersBibTeXExportUrl(filterParams)}
             download="research-papers.bib"
             className="btn btn-secondary btn-sm"
-            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            style={{ textDecoration: 'none' }}
           >
-            Export BibTeX
+            <IconDownload size={13} /> Export BibTeX
+          </a>
+          <a 
+            href={getPapersRisExportUrl(filterParams)}
+            download="research-papers.ris"
+            className="btn btn-secondary btn-sm"
+            style={{ textDecoration: 'none' }}
+          >
+            <IconDownload size={13} /> Export RIS
           </a>
         </div>
       </div>
@@ -179,12 +190,12 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
           className={`btn btn-sm ${searchMode === 'semantic' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => { setSearchMode('semantic'); }}
         >
-          🧠 Semantic & Natural Language Search
+          <IconSparkles size={13} /> Semantic & Natural Language Search
         </button>
       </div>
 
       {/* Filter / Search Panel */}
-      <div className="panel" style={{ marginBottom: '20px' }}>
+      <div className="panel" style={{ marginBottom: '20px', padding: '20px 24px' }}>
         {searchMode === 'semantic' ? (
           <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <div style={{ flex: 1 }}>
@@ -194,7 +205,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input
                 type="text"
                 className="search-input"
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%', padding: '10px 14px', fontSize: '14px' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%', padding: '10px 14px', fontSize: '14px' }}
                 placeholder="e.g., Explainable zero-shot transfer learning with vision-language models for biomedical imaging"
                 value={semanticQuery}
                 onChange={(e) => setSemanticQuery(e.target.value)}
@@ -211,7 +222,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 placeholder="e.g. Generative AI"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -223,7 +234,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 placeholder="e.g. Smith"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
@@ -235,7 +246,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 placeholder="e.g. Stanford"
                 value={institution}
                 onChange={(e) => setInstitution(e.target.value)}
@@ -247,7 +258,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="number" 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 placeholder="e.g. 2024"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
@@ -258,7 +269,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Open Access</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 value={isOpenAccess}
                 onChange={(e) => setIsOpenAccess(e.target.value)}
               >
@@ -272,7 +283,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Paper Type</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 value={paperType}
                 onChange={(e) => setPaperType(e.target.value)}
               >
@@ -288,7 +299,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Source Provider</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
               >
@@ -304,7 +315,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="number" 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 placeholder="e.g. 5"
                 value={minCitations}
                 onChange={(e) => setMinCitations(e.target.value)}
@@ -315,7 +326,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Sort By</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
@@ -333,8 +344,29 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
       </div>
 
       {loading ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          {searchMode === 'semantic' ? 'Scoring semantic conceptual similarity across corpus...' : 'Loading papers database...'}
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '36px' }}>Save</th>
+                <th>{searchMode === 'semantic' ? 'Relevance Score' : 'Paper Title & Authors'}</th>
+                <th>{searchMode === 'semantic' ? 'Paper Title & Authors' : 'Year'}</th>
+                <th>{searchMode === 'semantic' ? 'Year' : 'Venue / Journal'}</th>
+                <th>{searchMode === 'semantic' ? 'Venue' : 'Citations'}</th>
+                <th>{searchMode === 'semantic' ? 'Citations' : 'Access'}</th>
+                <th>{searchMode === 'semantic' ? 'Access' : 'Topics'}</th>
+                <th>{searchMode === 'semantic' ? 'Actions' : 'Source'}</th>
+                {searchMode !== 'semantic' && <th>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              <SkeletonTableRow columns={searchMode === 'semantic' ? 8 : 9} />
+              <SkeletonTableRow columns={searchMode === 'semantic' ? 8 : 9} />
+              <SkeletonTableRow columns={searchMode === 'semantic' ? 8 : 9} />
+              <SkeletonTableRow columns={searchMode === 'semantic' ? 8 : 9} />
+              <SkeletonTableRow columns={searchMode === 'semantic' ? 8 : 9} />
+            </tbody>
+          </table>
         </div>
       ) : searchMode === 'semantic' ? (
         /* Semantic Results Table */
@@ -372,11 +404,13 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                               background: 'none',
                               border: 'none',
                               cursor: 'pointer',
-                              fontSize: '18px',
-                              color: saved ? '#eab308' : '#cbd5e1'
+                              padding: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
                             }}
                           >
-                            {saved ? '★' : '☆'}
+                            <IconBookmark size={16} filled={saved} color={saved ? 'var(--warning)' : 'var(--text-subtle)'} />
                           </button>
                         </td>
                         <td>
@@ -397,7 +431,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                         <td style={{ fontWeight: 700 }}>{p.citationCount || 0}</td>
                         <td>
                           {p.isOpenAccess ? (
-                            <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>OA</span>
+                            <span className="tag tag-success">OA</span>
                           ) : (
                             <span className="tag" style={{ opacity: 0.6 }}>Sub</span>
                           )}
@@ -412,7 +446,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                                 className={`btn btn-sm ${inCompare ? 'btn-primary' : 'btn-secondary'}`}
                                 onClick={() => onAddToCompare(p.id)}
                               >
-                                {inCompare ? '✓ In Compare' : '+ Compare'}
+                                {inCompare ? 'In Compare' : '+ Compare'}
                               </button>
                             )}
                           </div>
@@ -464,13 +498,14 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            fontSize: '18px',
-                            color: saved ? '#eab308' : '#cbd5e1',
                             padding: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             transition: 'color 0.15s ease'
                           }}
                         >
-                          {saved ? '★' : '☆'}
+                          <IconBookmark size={16} filled={saved} color={saved ? 'var(--warning)' : 'var(--text-subtle)'} />
                         </button>
                       </td>
                       <td style={{ maxWidth: '360px' }}>
@@ -486,7 +521,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                       <td style={{ fontWeight: 700 }}>{p.citationCount || 0}</td>
                       <td>
                         {p.isOpenAccess ? (
-                          <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                          <span className="tag tag-success">
                             OA
                           </span>
                         ) : (
@@ -509,7 +544,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                               className={`btn btn-sm ${inCompare ? 'btn-primary' : 'btn-secondary'}`}
                               onClick={() => onAddToCompare(p.id)}
                             >
-                              {inCompare ? '✓ In Compare' : '+ Compare'}
+                              {inCompare ? 'In Compare' : '+ Compare'}
                             </button>
                           )}
                         </div>

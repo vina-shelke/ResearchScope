@@ -28,20 +28,24 @@ export default function CitationsView({ onSelectPaper }) {
           <div className="panel-header">
             <div className="panel-title">Aggregated Citation Trends</div>
           </div>
-          <TrendChart data={data.citationTrends} xKey="year" yKey="citations" height={200} />
+          <div className="panel-body">
+            <TrendChart data={data.citationTrends} xKey="year" yKey="citations" height={200} />
+          </div>
         </div>
 
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">Citation Volume Distribution</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-            {data.citationDistribution.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-main)' }}>
-                <span style={{ fontWeight: 600 }}>{item.range}</span>
-                <span className="tag tag-accent" style={{ fontSize: '13px' }}>{item.count} papers</span>
-              </div>
-            ))}
+          <div className="panel-body">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {data.citationDistribution.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-main)' }}>
+                  <span style={{ fontWeight: 600 }}>{item.range}</span>
+                  <span className="tag tag-accent" style={{ fontSize: '13px' }}>{item.count} papers</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -96,6 +96,15 @@ public class PaperController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping(value = "/{id}/export/ris", produces = "application/x-research-info-systems")
+    public ResponseEntity<String> exportSinglePaperRis(@PathVariable("id") String id) {
+        return paperService.getPaperById(id)
+                .map(paper -> ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"paper-" + id + ".ris\"")
+                        .body(paperService.generateRis(paper)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping(value = "/export/csv", produces = "text/csv")
     public ResponseEntity<String> exportPapersCsv(
             @RequestParam(value = "q", required = false) String query,
@@ -136,6 +145,29 @@ public class PaperController {
         }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"research-papers.bib\"")
+                .body(sb.toString());
+    }
+
+    @GetMapping(value = "/export/ris", produces = "application/x-research-info-systems")
+    public ResponseEntity<String> exportPapersRis(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "year", required = false) Integer year,
+            @RequestParam(value = "source", required = false) String source,
+            @RequestParam(value = "minCitations", required = false) Integer minCitations,
+            @RequestParam(value = "isOpenAccess", required = false) Boolean isOpenAccess,
+            @RequestParam(value = "paperType", required = false) String paperType,
+            @RequestParam(value = "author", required = false) String author,
+            @RequestParam(value = "institution", required = false) String institution
+    ) {
+        PaginatedResponse<PaperDTO> response = paperService.searchPapersExtended(
+                query, year, source, minCitations, isOpenAccess, paperType, author, institution, "publicationYear", "desc", 0, 500
+        );
+        StringBuilder sb = new StringBuilder();
+        for (PaperDTO paper : response.getContent()) {
+            sb.append(paperService.generateRis(paper)).append("\n");
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"research-papers.ris\"")
                 .body(sb.toString());
     }
 }

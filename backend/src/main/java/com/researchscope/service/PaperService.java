@@ -320,6 +320,44 @@ public class PaperService {
         return sb.toString();
     }
 
+    public String generateRis(PaperDTO paper) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("TY  - JOUR\n");
+        if (paper.getTitle() != null && !paper.getTitle().isBlank()) {
+            sb.append("TI  - ").append(paper.getTitle().replace("\n", " ").trim()).append("\n");
+        }
+        if (paper.getAuthors() != null) {
+            for (AuthorDTO author : paper.getAuthors()) {
+                if (author.getName() != null && !author.getName().isBlank()) {
+                    sb.append("AU  - ").append(author.getName().trim()).append("\n");
+                }
+            }
+        }
+        if (paper.getPublicationYear() != null) {
+            sb.append("PY  - ").append(paper.getPublicationYear()).append("\n");
+        }
+        if (paper.getVenue() != null && !paper.getVenue().isBlank()) {
+            sb.append("JO  - ").append(paper.getVenue().replace("\n", " ").trim()).append("\n");
+        }
+        if (paper.getDoi() != null && !paper.getDoi().isBlank()) {
+            sb.append("DO  - ").append(paper.getDoi().trim()).append("\n");
+        }
+        if (paper.getUrl() != null && !paper.getUrl().isBlank()) {
+            sb.append("UR  - ").append(paper.getUrl().trim()).append("\n");
+        }
+        if (paper.getPdfUrl() != null && !paper.getPdfUrl().isBlank()) {
+            sb.append("L1  - ").append(paper.getPdfUrl().trim()).append("\n");
+        }
+        if (paper.getPublisher() != null && !paper.getPublisher().isBlank()) {
+            sb.append("PB  - ").append(paper.getPublisher().trim()).append("\n");
+        }
+        if (paper.getAbstractText() != null && !paper.getAbstractText().isBlank()) {
+            sb.append("AB  - ").append(paper.getAbstractText().replace("\n", " ").trim()).append("\n");
+        }
+        sb.append("ER  - \n");
+        return sb.toString();
+    }
+
     public String generateCsv(List<PaperDTO> papers) {
         StringBuilder sb = new StringBuilder();
         sb.append("\"ID\",\"Title\",\"Authors\",\"Publication Year\",\"Venue\",\"Citations\",\"DOI\",\"Open Access\",\"PDF URL\",\"Paper Type\",\"Publisher\",\"Source\"\n");

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { fetchResearchGraph, fetchGraphExpanded } from '../api/client';
+import { IconInfo } from './Icons';
 
 export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
@@ -161,25 +162,25 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     return { visibleNodes: nodes, visibleLinks: links };
   }, [graphData, filterType, searchTerm, activeRelations]);
 
-  // Color mappings
+  // Color mappings (Sober & Muted)
   const getNodeColor = (type) => {
     switch (type) {
-      case 'Paper': return '#1e40af';       // Steel Blue
-      case 'Author': return '#047857';      // Emerald
-      case 'Institution': return '#c2410c'; // Rust Amber
-      case 'Topic': return '#6b21a8';       // Deep Purple
-      default: return '#475569';
+      case 'Paper': return '#71717a';       // Muted Zinc
+      case 'Author': return '#4d6b53';      // Muted Sage
+      case 'Institution': return '#8c6d48'; // Muted Sepia
+      case 'Topic': return '#665561';       // Muted Mauve
+      default: return '#52525b';
     }
   };
 
   const getLinkColor = (type) => {
     switch (type) {
-      case 'WROTE': return '#10b981';
-      case 'HAS_TOPIC': return '#a855f7';
-      case 'AFFILIATED_WITH': return '#f97316';
-      case 'CITES': return '#3b82f6';
-      case 'SIMILAR_TOPIC': return '#6366f1';
-      default: return '#64748b';
+      case 'WROTE': return '#4d6b53';
+      case 'HAS_TOPIC': return '#665561';
+      case 'AFFILIATED_WITH': return '#8c6d48';
+      case 'CITES': return '#71717a';
+      case 'SIMILAR_TOPIC': return '#8e8e93';
+      default: return '#52525b';
     }
   };
 
@@ -328,7 +329,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>Graph Depth:</span>
               <select
                 className="search-input"
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', padding: '5px 10px', fontSize: '12px', width: 'auto' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '5px 10px', fontSize: '12px', width: 'auto' }}
                 value={nodeLimit}
                 onChange={(e) => setNodeLimit(Number(e.target.value))}
               >
@@ -341,7 +342,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               <input
                 type="text"
                 className="search-input"
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', padding: '5px 10px', fontSize: '12px', width: '200px' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '5px 10px', fontSize: '12px', width: '200px' }}
                 placeholder="Find node by name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -355,11 +356,11 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               Relationship Types:
             </span>
             {[
-              { key: 'WROTE', label: 'Co-authorship (WROTE)', color: '#10b981' },
-              { key: 'AFFILIATED_WITH', label: 'Affiliations (AFFILIATED_WITH)', color: '#f97316' },
-              { key: 'HAS_TOPIC', label: 'Topic Taxonomy (HAS_TOPIC)', color: '#a855f7' },
-              { key: 'CITES', label: 'Citations (CITES)', color: '#3b82f6' },
-              { key: 'SIMILAR_TOPIC', label: 'Topic Similarity (SIMILAR_TOPIC)', color: '#6366f1' },
+              { key: 'WROTE', label: 'Co-authorship (WROTE)', color: '#4d6b53' },
+              { key: 'AFFILIATED_WITH', label: 'Affiliations (AFFILIATED_WITH)', color: '#8c6d48' },
+              { key: 'HAS_TOPIC', label: 'Topic Taxonomy (HAS_TOPIC)', color: '#665561' },
+              { key: 'CITES', label: 'Citations (CITES)', color: '#71717a' },
+              { key: 'SIMILAR_TOPIC', label: 'Topic Similarity (SIMILAR_TOPIC)', color: '#8e8e93' },
             ].map(rel => (
               <label 
                 key={rel.key} 
@@ -394,9 +395,9 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
       {/* Dynamic Expansion Notice */}
       {expansionNotice && (
         <div style={{
-          backgroundColor: '#eff6ff',
-          color: '#1d4ed8',
-          border: '1px solid #bfdbfe',
+          backgroundColor: 'var(--accent-light)',
+          color: 'var(--accent)',
+          border: '1px solid var(--accent-border)',
           padding: '8px 16px',
           borderRadius: 'var(--radius-sm)',
           marginBottom: '12px',
@@ -412,7 +413,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
         className="graph-container" 
         style={{ 
           height: '660px', 
-          backgroundColor: '#090d16', 
+          backgroundColor: 'var(--graph-bg)', 
           borderRadius: 'var(--radius-md)', 
           position: 'relative', 
           overflow: 'hidden',
@@ -421,7 +422,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
         }}
       >
         {/* Tier Headers */}
-        <div style={{ position: 'absolute', top: '12px', left: 0, right: 0, display: 'flex', justifyContent: 'space-around', pointerEvents: 'none', color: '#64748b', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <div style={{ position: 'absolute', top: '14px', left: '20px', right: '180px', display: 'flex', justifyContent: 'space-around', pointerEvents: 'none', color: '#71717a', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           <div>Authors</div>
           <div>Institutions</div>
           <div>Papers</div>
@@ -429,16 +430,17 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
         </div>
 
         {/* Legend */}
-        <div className="graph-legend" style={{ top: '38px', right: '14px', backgroundColor: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(4px)' }}>
-          <div className="legend-item"><div className="legend-color" style={{ background: '#047857' }}></div> Author</div>
-          <div className="legend-item"><div className="legend-color" style={{ background: '#c2410c' }}></div> Institution</div>
-          <div className="legend-item"><div className="legend-color" style={{ background: '#1e40af' }}></div> Paper</div>
-          <div className="legend-item"><div className="legend-color" style={{ background: '#6b21a8' }}></div> Topic</div>
+        <div className="graph-legend" style={{ top: '16px', right: '16px', backgroundColor: 'rgba(20, 20, 22, 0.92)', backdropFilter: 'blur(4px)' }}>
+          <div className="legend-item"><div className="legend-color" style={{ background: '#4d6b53' }}></div> Author</div>
+          <div className="legend-item"><div className="legend-color" style={{ background: '#8c6d48' }}></div> Institution</div>
+          <div className="legend-item"><div className="legend-color" style={{ background: '#71717a' }}></div> Paper</div>
+          <div className="legend-item"><div className="legend-color" style={{ background: '#665561' }}></div> Topic</div>
         </div>
 
         {/* Tip Badge */}
-        <div style={{ position: 'absolute', bottom: '12px', left: '14px', color: '#64748b', fontSize: '11px', pointerEvents: 'none' }}>
-          💡 Drag background to Pan • Scroll to Zoom • Drag nodes to reposition • Click to inspect & expand neighbors
+        <div style={{ position: 'absolute', bottom: '12px', left: '14px', color: '#94a3b8', fontSize: '11px', pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconInfo size={13} />
+          <span>Drag background to Pan • Scroll to Zoom • Drag nodes to reposition • Click to inspect & expand neighbors</span>
         </div>
 
         <svg 
@@ -456,7 +458,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
             {/* Grid Guides */}
             {[140, 400, 700, 980].map((x, i) => (
-              <line key={i} x1={x} y1={40} x2={x} y2={620} stroke="#1e293b" strokeDasharray="4 4" strokeWidth="1" />
+              <line key={i} x1={x} y1={40} x2={x} y2={620} stroke="var(--border-color)" strokeDasharray="4 4" strokeWidth="1" />
             ))}
 
             {/* Links */}
@@ -479,7 +481,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                   <path
                     d={pathD}
                     fill="none"
-                    stroke={isHighlighted ? '#60a5fa' : linkColor}
+                    stroke={isHighlighted ? 'var(--text-main)' : linkColor}
                     strokeWidth={isHighlighted ? 2.5 : 1.2}
                     strokeOpacity={isHighlighted ? 0.95 : isFaded ? 0.08 : 0.45}
                   />
@@ -487,7 +489,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                     <text
                       x={midX}
                       y={(sourcePos.y + targetPos.y) / 2 - 4}
-                      fill="#93c5fd"
+                      fill="var(--text-main)"
                       fontSize="9"
                       fontWeight="600"
                       textAnchor="middle"
@@ -556,7 +558,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
       {/* Selected Node Details & Action Bar */}
       {selectedNode && (
-        <div className="panel" style={{ marginTop: '16px', borderLeft: `4px solid ${getNodeColor(selectedNode.type)}` }}>
+        <div className="panel" style={{ marginTop: '16px', borderLeft: `4px solid ${getNodeColor(selectedNode.type)}`, padding: '18px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>

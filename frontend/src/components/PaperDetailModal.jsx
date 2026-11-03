@@ -4,8 +4,10 @@ import {
   removeSavedPaper, 
   fetchPaperReferences, 
   fetchPaperRecommendations,
-  getPaperBibTeXUrl 
+  getPaperBibTeXUrl,
+  getPaperRisUrl 
 } from '../api/client';
+import { IconExternalLink, IconBookmark, IconAlert, IconCheck } from './Icons';
 
 export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddToCompare, comparisonIds = [] }) {
   if (!paper) return null;
@@ -98,8 +100,8 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
               <span className="tag tag-accent">{paper.source || 'Scholarly Record'}</span>
               
               {paper.isOpenAccess ? (
-                <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
-                  ✓ Open Access
+                <span className="tag tag-success">
+                  Open Access
                 </span>
               ) : (
                 <span className="tag" style={{ opacity: 0.7 }}>
@@ -114,8 +116,8 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
               )}
 
               {isSaved && (
-                <span className="tag" style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>
-                  ★ In Library ({collectionName})
+                <span className="tag tag-warning">
+                  In Library ({collectionName})
                 </span>
               )}
             </div>
@@ -128,9 +130,9 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
         {/* Retraction Warning Banner */}
         {paper.isRetracted && (
           <div style={{
-            backgroundColor: '#fef2f2',
-            color: '#991b1b',
-            border: '1px solid #fecaca',
+            backgroundColor: 'var(--danger-light)',
+            color: 'var(--danger)',
+            border: '1px solid var(--danger-border)',
             padding: '12px 16px',
             fontSize: '13px',
             display: 'flex',
@@ -138,14 +140,15 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
             gap: '8px',
             fontWeight: 600
           }}>
-            <span>⚠️ NOTICE: This scientific publication has been formally retracted by the publisher or authors.</span>
+            <IconAlert size={16} />
+            <span>RETRACTION NOTICE: This scientific publication has been formally retracted by the publisher or authors.</span>
           </div>
         )}
 
         {/* Save/Bookmark Inline Form */}
         {showSaveForm && (
           <div style={{
-            backgroundColor: '#f8fafc',
+            backgroundColor: 'var(--bg-alt)',
             borderBottom: '1px solid var(--border-color)',
             padding: '14px 20px'
           }}>
@@ -159,7 +162,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                   <input
                     type="text"
                     className="search-input"
-                    style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                    style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                     placeholder="e.g. Favorites, Read Later"
                     value={collectionName}
                     onChange={(e) => setCollectionName(e.target.value)}
@@ -170,7 +173,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                   <input
                     type="text"
                     className="search-input"
-                    style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', width: '100%' }}
+                    style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
                     placeholder="Key insight or study relevance..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -230,19 +233,19 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
           </div>
 
           {/* Key Publication Metrics */}
-          <div className="detail-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px', backgroundColor: 'var(--bg-main)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+          <div className="detail-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px', backgroundColor: 'var(--bg-main)', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}>
             <div>
               <div className="detail-label">Publication Year</div>
               <div style={{ fontWeight: 600 }}>{paper.publicationYear || 'N/A'}</div>
             </div>
             <div>
               <div className="detail-label">Journal / Venue</div>
-              <div style={{ fontWeight: 600 }}>{paper.venue || 'N/A'}</div>
+              <div style={{ fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{paper.venue || 'N/A'}</div>
             </div>
             {paper.publisher && (
               <div>
                 <div className="detail-label">Publisher</div>
-                <div style={{ fontWeight: 600 }}>{paper.publisher}</div>
+                <div style={{ fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{paper.publisher}</div>
               </div>
             )}
             <div>
@@ -272,7 +275,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
           {/* Full Abstract */}
           <div className="detail-section">
             <div className="detail-label">Full Abstract</div>
-            <p style={{ color: 'var(--text-main)', lineHeight: '1.6', fontSize: '14px', backgroundColor: '#ffffff', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <p style={{ color: 'var(--text-main)', lineHeight: '1.6', fontSize: '14px', backgroundColor: 'var(--bg-alt)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
               {paper.abstractText || 'No abstract available for this record.'}
             </p>
           </div>
@@ -303,7 +306,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                         target="_blank" 
                         rel="noreferrer"
                         title={`ROR ID: ${inst.rorId}`}
-                        style={{ color: '#0284c7', fontSize: '10px', textDecoration: 'none', fontWeight: 'bold' }}
+                        style={{ color: 'var(--accent)', fontSize: '10px', textDecoration: 'none', fontWeight: 'bold' }}
                       >
                         [ROR]
                       </a>
@@ -332,7 +335,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                     <div 
                       key={targetPaper.id}
                       style={{
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--bg-alt)',
                         border: '1px solid var(--border-color)',
                         borderRadius: 'var(--radius-sm)',
                         padding: '10px 14px',
@@ -356,7 +359,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                           <span>{targetPaper.venue || 'Venue n/a'}</span>
                           <span>•</span>
                           <span><strong>{targetPaper.citationCount || 0}</strong> citations</span>
-                          <span className="tag" style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', fontSize: '11px' }}>
+                          <span className="tag" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent-border)', fontSize: '11px' }}>
                             {rec.rationale}
                           </span>
                         </div>
@@ -409,7 +412,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
         </div>
 
         {/* Modal Bottom Action Bar */}
-        <div className="modal-header" style={{ borderTop: '1px solid var(--border-color)', borderBottom: 'none', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="modal-footer">
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             {targetUrl ? (
               <a 
@@ -417,9 +420,9 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                 target="_blank" 
                 rel="noreferrer" 
                 className="btn btn-primary btn-sm"
-                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                style={{ textDecoration: 'none' }}
               >
-                View Original Paper ↗
+                View Original Paper <IconExternalLink size={13} />
               </a>
             ) : (
               <button className="btn btn-secondary btn-sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>
@@ -433,9 +436,9 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                 target="_blank" 
                 rel="noreferrer" 
                 className="btn btn-secondary btn-sm"
-                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#047857', borderColor: '#a7f3d0', backgroundColor: '#f0fdf4' }}
+                style={{ textDecoration: 'none', color: 'var(--text-main)', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-alt)' }}
               >
-                View / Download PDF ↗
+                View / Download PDF <IconExternalLink size={13} />
               </a>
             ) : null}
 
@@ -445,7 +448,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                 className={`btn btn-sm ${inCompare ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => onAddToCompare(paper.id)}
               >
-                {inCompare ? '✓ In Compare' : '+ Add to Compare'}
+                {inCompare ? 'In Compare' : '+ Add to Compare'}
               </button>
             )}
 
@@ -453,18 +456,27 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
               href={getPaperBibTeXUrl(paper.id)}
               download={`paper-${paper.id}.bib`}
               className="btn btn-secondary btn-sm"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ textDecoration: 'none' }}
             >
               Export BibTeX
             </a>
 
+            <a 
+              href={getPaperRisUrl(paper.id)}
+              download={`paper-${paper.id}.ris`}
+              className="btn btn-secondary btn-sm"
+              style={{ textDecoration: 'none' }}
+            >
+              Export RIS
+            </a>
+
             <button 
               type="button" 
-              className={`btn btn-sm ${isSaved ? 'btn-secondary' : 'btn-secondary'}`}
+              className="btn btn-secondary btn-sm"
               onClick={handleToggleSave}
-              style={isSaved ? { color: '#b91c1c', borderColor: '#fca5a5' } : {}}
+              style={isSaved ? { color: 'var(--danger)', borderColor: 'var(--danger-border)' } : {}}
             >
-              {isSaved ? '★ Remove from Library' : '☆ Save to Library'}
+              {isSaved ? 'Remove from Library' : 'Save to Library'}
             </button>
 
             {savingStatus && (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchResearchGaps, saveGapAnalysis } from '../api/client';
+import { IconCheck, IconBookmark } from './Icons';
 
 export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery || 'Generative AI in Education');
@@ -58,11 +59,11 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
 
   const getConfidenceBadge = (confidence) => {
     if (confidence === 'HIGH') {
-      return <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 600 }}>High Confidence</span>;
+      return <span className="tag tag-success">High Confidence</span>;
     } else if (confidence === 'MEDIUM') {
-      return <span className="tag" style={{ backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', fontWeight: 600 }}>Moderate Confidence</span>;
+      return <span className="tag tag-warning">Moderate Confidence</span>;
     }
-    return <span className="tag" style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', fontWeight: 600 }}>Preliminary Signal</span>;
+    return <span className="tag">Preliminary Signal</span>;
   };
 
   return (
@@ -80,7 +81,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
           <input
             type="text"
             className="search-input"
-            style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', fontSize: '14px' }}
+            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', fontSize: '14px' }}
             placeholder="Enter research topic to discover gaps (e.g., Cybersecurity in Generative AI)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -110,13 +111,14 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
       </div>
 
       {saveSuccessMsg && (
-        <div className="panel" style={{ backgroundColor: '#ecfdf5', borderColor: '#6ee7b7', color: '#065f46', marginBottom: '16px', padding: '10px 16px', fontSize: '13px' }}>
-          ✓ {saveSuccessMsg}
+        <div className="panel" style={{ backgroundColor: 'var(--success-light)', borderColor: 'var(--success-border)', color: 'var(--success)', marginBottom: '16px', padding: '10px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconCheck size={14} />
+          <span>{saveSuccessMsg}</span>
         </div>
       )}
 
       {error && (
-        <div className="panel" style={{ backgroundColor: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b', marginBottom: '20px' }}>
+        <div className="panel" style={{ backgroundColor: 'var(--danger-light)', borderColor: 'var(--danger-border)', color: 'var(--danger)', marginBottom: '20px' }}>
           {error}
         </div>
       )}
@@ -126,14 +128,14 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
           <div style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '8px' }}>
             Retrieving scholarly publications, clustering thematic vectors, and extracting boundary cues...
           </div>
-          <div style={{ fontSize: '13px', color: '#94a3b8' }}>Analyzing methodology distributions and literature limitations</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Analyzing methodology distributions and literature limitations</div>
         </div>
       )}
 
       {!loading && analysis && (
         <div>
           {/* Summary Stats Grid */}
-          <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '24px' }}>
+          <div className="metrics-grid">
             <div className="metric-card">
               <div className="metric-label">Analyzed Publications</div>
               <div className="metric-value">{analysis.totalPapersAnalyzed}</div>
@@ -167,7 +169,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
 
           {/* Methodology Distribution & Themes Overview */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-            <div className="panel">
+            <div className="panel" style={{ padding: '20px 24px' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
                 Methodology Distribution
               </h3>
@@ -189,7 +191,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
               </div>
             </div>
 
-            <div className="panel">
+            <div className="panel" style={{ padding: '20px 24px' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
                 Key Research Themes
               </h3>
@@ -214,7 +216,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {analysis.gapCandidates?.map((gap, idx) => (
-              <div key={gap.id || idx} className="panel" style={{ borderLeft: '4px solid var(--accent)' }}>
+              <div key={gap.id || idx} className="panel" style={{ borderLeft: '4px solid var(--accent)', padding: '20px 24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -240,19 +242,19 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
                       className="btn btn-primary btn-sm"
                       onClick={() => handleSaveGap(gap)}
                     >
-                      ★ Save Gap
+                      <IconBookmark size={13} /> Save Gap
                     </button>
                   </div>
                 </div>
 
-                <p style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6', marginBottom: '12px' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6', marginBottom: '12px' }}>
                   {gap.explanation}
                 </p>
 
                 {/* Extracted Limitations Callout */}
                 {gap.extractedLimitations && gap.extractedLimitations.length > 0 && (
-                  <div style={{ backgroundColor: 'var(--bg-alt)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', borderLeft: '3px solid #f59e0b', marginBottom: '12px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  <div style={{ backgroundColor: 'var(--bg-alt)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', borderLeft: '3px solid var(--border-color)', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
                       Literature Boundary & Limitation Evidence
                     </div>
                     {gap.extractedLimitations.map((lim, lIdx) => (
@@ -289,7 +291,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
       {/* Deep-dive Evidence Modal */}
       {activeEvidenceModal && (
         <div className="modal-backdrop" onClick={() => setActiveEvidenceModal(null)}>
-          <div className="modal-content" style={{ maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto', padding: '24px 28px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>
               <div>
                 <span className="tag tag-accent" style={{ marginBottom: '6px' }}>Evidence Dossier</span>
@@ -298,12 +300,12 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
                   {activeEvidenceModal.identificationMethod} • {activeEvidenceModal.coverageCaveat}
                 </div>
               </div>
-              <button className="btn btn-secondary btn-sm" onClick={() => setActiveEvidenceModal(null)}>✕ Close</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setActiveEvidenceModal(null)}>Close</button>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>Detailed Explanation</h4>
-              <p style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6' }}>{activeEvidenceModal.explanation}</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6' }}>{activeEvidenceModal.explanation}</p>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -329,7 +331,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
                       {p.authors?.map(a => a.name).join(', ') || 'Scholarly Authors'} • {p.venue || 'Academic Venue'} • {p.citationCount || 0} citations
                     </div>
                     {p.abstractText && !p.abstractText.startsWith('Abstract not available') && (
-                      <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5', marginTop: '6px' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', marginTop: '6px' }}>
                         {p.abstractText.length > 200 ? p.abstractText.substring(0, 197) + '...' : p.abstractText}
                       </div>
                     )}
@@ -339,11 +341,11 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
             </div>
 
             {activeEvidenceModal.extractedFutureWork && activeEvidenceModal.extractedFutureWork.length > 0 && (
-              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#166534', marginBottom: '6px' }}>
+              <div style={{ backgroundColor: 'var(--bg-alt)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
                   Recommended Research Directions
                 </h4>
-                <ul style={{ paddingLeft: '18px', fontSize: '13px', color: '#14532d', lineHeight: '1.6' }}>
+                <ul style={{ paddingLeft: '18px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
                   {activeEvidenceModal.extractedFutureWork.map((fw, i) => (
                     <li key={i}>{fw}</li>
                   ))}

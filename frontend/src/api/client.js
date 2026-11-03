@@ -169,6 +169,10 @@ export function getPaperBibTeXUrl(paperId) {
   return `${API_BASE}/papers/${encodeURIComponent(paperId)}/export/bibtex`;
 }
 
+export function getPaperRisUrl(paperId) {
+  return `${API_BASE}/papers/${encodeURIComponent(paperId)}/export/ris`;
+}
+
 export function getPapersCsvExportUrl(params = {}) {
   const queryParams = new URLSearchParams();
   if (params.q) queryParams.set('q', params.q);
@@ -197,6 +201,21 @@ export function getPapersBibTeXExportUrl(params = {}) {
   if (params.author) queryParams.set('author', params.author);
   if (params.institution) queryParams.set('institution', params.institution);
   return `${API_BASE}/papers/export/bibtex?${queryParams.toString()}`;
+}
+
+export function getPapersRisExportUrl(params = {}) {
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.set('q', params.q);
+  if (params.year) queryParams.set('year', params.year);
+  if (params.source) queryParams.set('source', params.source);
+  if (params.minCitations) queryParams.set('minCitations', params.minCitations);
+  if (params.isOpenAccess !== undefined && params.isOpenAccess !== null && params.isOpenAccess !== '') {
+    queryParams.set('isOpenAccess', params.isOpenAccess);
+  }
+  if (params.paperType) queryParams.set('paperType', params.paperType);
+  if (params.author) queryParams.set('author', params.author);
+  if (params.institution) queryParams.set('institution', params.institution);
+  return `${API_BASE}/papers/export/ris?${queryParams.toString()}`;
 }
 
 export function getSavedPapersCsvUrl(collection = '') {

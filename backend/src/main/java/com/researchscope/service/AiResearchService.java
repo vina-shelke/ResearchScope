@@ -59,7 +59,7 @@ public class AiResearchService {
 
         if (citedPapers.isEmpty()) {
             String fallback = "No relevant scholarly papers were found in the database to answer: \"" + question + "\".\n\n"
-                    + "💡 **Tip:** Try using the Search bar to ingest papers on this topic first, or rephrase your question using common academic keywords.";
+                    + "**Tip:** Try using the Search bar to ingest papers on this topic first, or rephrase your question using common academic keywords.";
             return new AiAnswerResponse(question, fallback, "Corpus Retrieval", Collections.emptyList());
         }
 

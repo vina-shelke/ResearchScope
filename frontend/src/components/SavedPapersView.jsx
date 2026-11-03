@@ -6,6 +6,7 @@ import {
   getSavedPapersCsvUrl,
   getSavedPapersBibTeXUrl
 } from '../api/client';
+import { IconDownload, IconBookmark } from './Icons';
 
 export default function SavedPapersView({ onSelectPaper }) {
   const [savedPapers, setSavedPapers] = useState([]);
@@ -60,29 +61,29 @@ export default function SavedPapersView({ onSelectPaper }) {
             href={getSavedPapersCsvUrl(selectedCollection === 'all' ? '' : selectedCollection)}
             download="saved-papers.csv"
             className="btn btn-secondary btn-sm"
-            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            style={{ textDecoration: 'none' }}
           >
-            <span>↓</span> Export CSV
+            <IconDownload size={14} /> Export CSV
           </a>
           <a 
             href={getSavedPapersBibTeXUrl(selectedCollection === 'all' ? '' : selectedCollection)}
             download="saved-papers.bib"
             className="btn btn-secondary btn-sm"
-            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            style={{ textDecoration: 'none' }}
           >
-            <span>↓</span> Export BibTeX
+            <IconDownload size={14} /> Export BibTeX
           </a>
         </div>
       </div>
 
       {notification && (
         <div style={{
-          backgroundColor: '#eff6ff',
-          color: '#1e40af',
+          backgroundColor: 'var(--accent-light)',
+          color: 'var(--accent)',
           padding: '10px 16px',
           borderRadius: 'var(--radius-sm)',
           marginBottom: '16px',
-          border: '1px solid #bfdbfe',
+          border: '1px solid var(--accent-border)',
           fontSize: '13px',
           display: 'flex',
           justifyContent: 'space-between',
@@ -91,7 +92,7 @@ export default function SavedPapersView({ onSelectPaper }) {
           <span>{notification}</span>
           <button 
             onClick={() => setNotification(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e40af', fontWeight: 'bold' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 'bold' }}
           >
             &times;
           </button>
@@ -123,7 +124,9 @@ export default function SavedPapersView({ onSelectPaper }) {
         </div>
       ) : savedPapers.length === 0 ? (
         <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📚</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <IconBookmark size={36} color="var(--accent)" />
+          </div>
           <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
             No papers saved in this collection
           </h3>
@@ -165,7 +168,7 @@ export default function SavedPapersView({ onSelectPaper }) {
                           : 'Authors not listed'}
                       </div>
                       {item.notes && (
-                        <div style={{ marginTop: '6px', fontSize: '12px', fontStyle: 'italic', color: '#475569', backgroundColor: '#f8fafc', padding: '4px 8px', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
+                        <div style={{ marginTop: '6px', fontSize: '12px', fontStyle: 'italic', color: 'var(--text-muted)', backgroundColor: 'var(--bg-alt)', padding: '4px 8px', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
                           Note: {item.notes}
                         </div>
                       )}
@@ -178,7 +181,7 @@ export default function SavedPapersView({ onSelectPaper }) {
                     <td style={{ fontWeight: 700 }}>{p.citationCount ?? 0}</td>
                     <td>
                       {p.isOpenAccess ? (
-                        <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                        <span className="tag tag-success">
                           Open Access
                         </span>
                       ) : (
@@ -195,7 +198,7 @@ export default function SavedPapersView({ onSelectPaper }) {
                         </button>
                         <button 
                           className="btn btn-secondary btn-sm"
-                          style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+                          style={{ color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
                           onClick={() => handleRemove(p.id, p.title)}
                         >
                           Remove

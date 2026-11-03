@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import TrendChart from './TrendChart';
 import { fetchPapers } from '../api/client';
+import { IconExternalLink } from './Icons';
+import { SkeletonMetricCard, SkeletonTableRow } from './SkeletonLoader';
 
 export default function DashboardView({ summary, loading, onSelectPaper, onSelectTopic, onSearch, onAddToCompare }) {
   const [topicPapersData, setTopicPapersData] = useState(null);
@@ -29,11 +31,21 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
 
   if (loading && !summary) {
     return (
-      <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
-          Aggregating and normalizing scholarly data...
+      <div>
+        <div className="section-header" style={{ marginBottom: '20px' }}>
+          <div className="skeleton-bar" style={{ width: '280px', height: '24px', marginBottom: '8px' }} />
+          <div className="skeleton-bar" style={{ width: '420px', height: '14px' }} />
         </div>
-        <div>Querying OpenAlex, Crossref, and Semantic Scholar academic APIs.</div>
+        <div className="metrics-grid">
+          <SkeletonMetricCard />
+          <SkeletonMetricCard />
+          <SkeletonMetricCard />
+          <SkeletonMetricCard />
+        </div>
+        <div className="panel" style={{ minHeight: '260px', marginTop: '20px' }}>
+          <div className="skeleton-bar" style={{ width: '200px', height: '18px', marginBottom: '16px' }} />
+          <div className="skeleton-bar" style={{ width: '100%', height: '180px' }} />
+        </div>
       </div>
     );
   }
@@ -62,7 +74,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
         </div>
 
         {/* Provenance Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12px', lineHeight: 1.4 }}>
           <span style={{ color: 'var(--text-muted)' }}>Data Transparency:</span>
           <strong>{uniqueCount.toLocaleString()} unique papers</strong>
           <span style={{ color: 'var(--text-muted)' }}>(normalized from {rawCount.toLocaleString()} raw records)</span>
@@ -74,28 +86,28 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
         <div className="metric-card">
           <div className="metric-label">Total Unique Papers</div>
           <div className="metric-value">{summary.totalPapers?.toLocaleString() || 0}</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Deduplicated & indexed</div>
+          <div className="metric-subtext">Deduplicated & indexed</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Scholarly Authors</div>
           <div className="metric-value">{summary.totalAuthors?.toLocaleString() || 0}</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Across publications</div>
+          <div className="metric-subtext">Across publications</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Research Institutions</div>
           <div className="metric-value">{summary.totalInstitutions?.toLocaleString() || 0}</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Academic & corporate</div>
+          <div className="metric-subtext">Academic & corporate</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Countries / Territories</div>
           <div className="metric-value">{summary.totalCountries?.toLocaleString() || 0}</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Global distribution</div>
+          <div className="metric-subtext">Global distribution</div>
         </div>
       </div>
 
       {/* 3. Emerging Keywords & Topic Velocity */}
       {summary.emergingKeywords && summary.emergingKeywords.length > 0 && (
-        <div className="panel" style={{ marginBottom: '24px', backgroundColor: '#f8fafc' }}>
+        <div className="panel" style={{ marginBottom: '24px', backgroundColor: 'var(--bg-alt)' }}>
           <div className="panel-header" style={{ marginBottom: '12px' }}>
             <div>
               <div className="panel-title" style={{ fontSize: '15px' }}>Emerging Keywords & Topic Velocity</div>
@@ -114,7 +126,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                 <div 
                   key={idx}
                   style={{
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'var(--bg-surface)',
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
                     padding: '12px 14px',
@@ -133,11 +145,11 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                     <span style={{
                       fontSize: '11px',
                       fontWeight: 700,
-                      color: isPositive ? '#047857' : '#b91c1c',
-                      backgroundColor: isPositive ? '#ecfdf5' : '#fef2f2',
+                      color: isPositive ? 'var(--success)' : 'var(--danger)',
+                      backgroundColor: isPositive ? 'var(--success-light)' : 'var(--danger-light)',
                       padding: '2px 6px',
-                      borderRadius: '4px',
-                      border: `1px solid ${isPositive ? '#a7f3d0' : '#fecaca'}`
+                      borderRadius: 'var(--radius-xs)',
+                      border: `1px solid ${isPositive ? 'var(--success-border)' : 'var(--danger-border)'}`
                     }}>
                       {isPositive ? `+${velocity}%` : `${velocity}%`}
                     </span>
@@ -180,7 +192,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 International Collaboration
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#047857', margin: '4px 0' }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--success)', margin: '4px 0' }}>
                 {collab.internationalCollaborationPercentage ? `${collab.internationalCollaborationPercentage}%` : '32.1%'}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cross-country co-authorships</div>
@@ -190,7 +202,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 Multi-Institution Rate
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#1e40af', margin: '4px 0' }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', margin: '4px 0' }}>
                 {collab.multiInstitutionPercentage ? `${collab.multiInstitutionPercentage}%` : '48.6%'}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Affiliation diversity</div>
@@ -200,7 +212,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 Avg Authors per Paper
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#c2410c', margin: '4px 0' }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--warning)', margin: '4px 0' }}>
                 {collab.averageAuthorsPerPaper ? collab.averageAuthorsPerPaper : '3.4'}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Average team scale</div>
@@ -226,7 +238,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Sort:</span>
               <select
                 className="search-input"
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', padding: '6px 10px', fontSize: '13px', width: 'auto' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '6px 10px', fontSize: '13px', width: 'auto' }}
                 value={sortBy}
                 onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
               >
@@ -239,7 +251,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <select
                 className="search-input"
-                style={{ backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid var(--border-color)', padding: '6px 10px', fontSize: '13px', width: 'auto' }}
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '6px 10px', fontSize: '13px', width: 'auto' }}
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
               >
@@ -251,7 +263,27 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
         </div>
 
         {loadingPapers ? (
-          <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading topic papers...</div>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Paper Details & Abstract Preview</th>
+                  <th>Publication Info</th>
+                  <th>DOI</th>
+                  <th>Citations</th>
+                  <th>Access</th>
+                  <th>Source</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <SkeletonTableRow columns={7} />
+                <SkeletonTableRow columns={7} />
+                <SkeletonTableRow columns={7} />
+                <SkeletonTableRow columns={7} />
+              </tbody>
+            </table>
+          </div>
         ) : topicPapersData && topicPapersData.content && topicPapersData.content.length > 0 ? (
           <div className="table-container">
             <table className="data-table">
@@ -317,14 +349,14 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                         )}
                       </td>
 
-                      <td style={{ fontWeight: 700, fontSize: '15px', color: 'var(--accent)' }}>
+                      <td style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
                         {paper.citationCount ?? 0}
                       </td>
 
                       <td>
                         {paper.isOpenAccess ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span className="tag" style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                            <span className="tag tag-success">
                               Open Access
                             </span>
                             {paper.pdfUrl && (
@@ -332,9 +364,9 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                                 href={paper.pdfUrl} 
                                 target="_blank" 
                                 rel="noreferrer" 
-                                style={{ fontSize: '11px', color: '#047857', textDecoration: 'none', fontWeight: 600 }}
+                                style={{ fontSize: '11px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                               >
-                                PDF ↗
+                                PDF <IconExternalLink size={10} />
                               </a>
                             )}
                           </div>
@@ -409,38 +441,42 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
           <div className="panel-header">
             <div className="panel-title">Publication Trend Over Time</div>
           </div>
-          <TrendChart data={summary.publicationTrend} xKey="year" yKey="count" />
+          <div className="panel-body">
+            <TrendChart data={summary.publicationTrend} xKey="year" yKey="count" />
+          </div>
         </div>
 
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">Prominent Research Topics</div>
           </div>
-          {summary.topTopics && summary.topTopics.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {summary.topTopics.slice(0, 7).map((topic, idx) => (
-                <div 
-                  key={topic.id || idx}
-                  onClick={() => onSelectTopic(topic.id)}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    backgroundColor: 'var(--bg-main)'
-                  }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: '13px' }}>{topic.name}</span>
-                  <span className="tag tag-accent">{topic.paperCount || 0} papers</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No topics recorded yet.</div>
-          )}
+          <div className="panel-body">
+            {summary.topTopics && summary.topTopics.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {summary.topTopics.slice(0, 7).map((topic, idx) => (
+                  <div 
+                    key={topic.id || idx}
+                    onClick={() => onSelectTopic(topic.id)}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      backgroundColor: 'var(--bg-main)'
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, fontSize: '13px' }}>{topic.name}</span>
+                    <span className="tag tag-accent">{topic.paperCount || 0} papers</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No topics recorded yet.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

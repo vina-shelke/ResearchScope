@@ -27,10 +27,10 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
   const maxVal = Math.max(...rawValues, 1);
 
   // SVG dimensions & padding
-  const svgWidth = 650;
+  const svgWidth = 660;
   const svgHeight = height;
-  const paddingLeft = 45;
-  const paddingRight = 20;
+  const paddingLeft = 56;
+  const paddingRight = 24;
   const paddingTop = 30;
   const paddingBottom = 40;
 
@@ -55,8 +55,8 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
           onChange={(e) => setYearRange(e.target.value)}
           className="search-input"
           style={{
-            backgroundColor: '#ffffff',
-            color: '#0f172a',
+            backgroundColor: 'var(--bg-surface)',
+            color: 'var(--text-main)',
             border: '1px solid var(--border-color)',
             padding: '4px 10px',
             fontSize: '12px',
@@ -89,7 +89,7 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 y1={yPos}
                 x2={svgWidth - paddingRight}
                 y2={yPos}
-                stroke="#cbd5e1"
+                stroke="var(--border-color)"
                 strokeDasharray={idx === 0 ? 'none' : '3 3'}
                 strokeWidth="1"
               />
@@ -99,7 +99,7 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 textAnchor="end"
                 fontSize="11"
                 fontWeight="600"
-                fill="#475569"
+                fill="var(--text-muted)"
               >
                 {tickVal.toLocaleString()}
               </text>
@@ -128,7 +128,7 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 y={paddingTop}
                 width={barWidth + 8}
                 height={chartHeight}
-                fill={isHovered ? '#f1f5f9' : 'transparent'}
+                fill={isHovered ? 'var(--bg-alt)' : 'transparent'}
                 rx="4"
               />
 
@@ -138,7 +138,7 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 y={y}
                 width={barWidth}
                 height={Math.max(barH, 2)}
-                fill={isHovered ? '#1e40af' : '#0f172a'}
+                fill={isHovered ? 'var(--accent-hover)' : 'var(--accent)'}
                 rx="3"
                 style={{ transition: 'fill 0.15s ease, height 0.2s ease' }}
               />
@@ -150,7 +150,7 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 textAnchor="middle"
                 fontSize="12"
                 fontWeight={isHovered ? '800' : '600'}
-                fill={isHovered ? '#1e40af' : '#0f172a'}
+                fill={isHovered ? 'var(--text-main)' : 'var(--text-muted)'}
               >
                 {val.toLocaleString()}
               </text>
@@ -162,7 +162,7 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 textAnchor="middle"
                 fontSize="12"
                 fontWeight={isHovered ? '800' : '500'}
-                fill={isHovered ? '#0f172a' : '#475569'}
+                fill={isHovered ? 'var(--text-main)' : 'var(--text-muted)'}
               >
                 {item[xKey]}
               </text>

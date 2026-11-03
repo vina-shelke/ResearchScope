@@ -1,7 +1,3 @@
--- ResearchScope Incremental Migration v3
--- Adds User Authentication, Research Projects, Workspace Reading Status, Saved Searches, Saved Comparisons, and Saved Gap Analyses
--- 100% Non-destructive: preserves existing data and relationships
-
 USE researchscope_db;
 
 -- 1. Users table for researcher accounts

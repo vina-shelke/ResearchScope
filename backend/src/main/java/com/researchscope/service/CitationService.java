@@ -4,6 +4,7 @@ import com.researchscope.dto.CitationIntelligenceDTO;
 import com.researchscope.dto.PaperDTO;
 import com.researchscope.entity.Paper;
 import com.researchscope.repository.PaperRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class CitationService {
         this.paperService = paperService;
     }
 
+    @Cacheable("citationIntelligence")
     public CitationIntelligenceDTO getCitationIntelligence() {
         List<Paper> topPapers = paperRepository.findTopCitedPapers(PageRequest.of(0, 10));
         List<PaperDTO> mostCited = topPapers.stream().map(paperService::toPaperDTO).toList();
