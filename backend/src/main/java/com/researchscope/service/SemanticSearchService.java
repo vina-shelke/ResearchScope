@@ -5,7 +5,6 @@ import com.researchscope.dto.PaperDTO;
 import com.researchscope.dto.PaperRecommendationDTO;
 import com.researchscope.entity.Paper;
 import com.researchscope.entity.PaperReference;
-import com.researchscope.entity.Topic;
 import com.researchscope.repository.PaperReferenceRepository;
 import com.researchscope.repository.PaperRepository;
 import org.springframework.data.domain.Page;

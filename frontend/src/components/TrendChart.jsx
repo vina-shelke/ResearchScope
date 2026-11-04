@@ -55,14 +55,17 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
           onChange={(e) => setYearRange(e.target.value)}
           className="search-input"
           style={{
-            backgroundColor: 'var(--bg-surface)',
+            backgroundColor: 'var(--search-input-bg)',
             color: 'var(--text-main)',
             border: '1px solid var(--border-color)',
-            padding: '4px 10px',
+            borderTop: '1px solid var(--border-shadow)',
+            padding: '5px 12px',
             fontSize: '12px',
             fontWeight: '600',
             width: 'auto',
-            borderRadius: 'var(--radius-sm)'
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: 'var(--shadow-skeuo-inset)',
+            cursor: 'pointer'
           }}
         >
           <option value="5">Last 5 Years</option>
@@ -132,15 +135,18 @@ export default function TrendChart({ data = [], xKey = 'year', yKey = 'count', h
                 rx="4"
               />
 
-              {/* Solid Rectangular Bar */}
+              {/* Solid Rectangular Bar with Soft Skeuomorphic Depth */}
               <rect
                 x={x}
                 y={y}
                 width={barWidth}
-                height={Math.max(barH, 2)}
-                fill={isHovered ? 'var(--accent-hover)' : 'var(--accent)'}
+                height={Math.max(barH, 3)}
+                fill={isHovered ? 'var(--text-main)' : 'var(--accent)'}
                 rx="3"
-                style={{ transition: 'fill 0.15s ease, height 0.2s ease' }}
+                style={{
+                  transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                  filter: isHovered ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' : 'none'
+                }}
               />
 
               {/* Value Label above Bar */}

@@ -29,8 +29,8 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
   };
 
   const primaryNavItems = [
-    { id: 'dashboard', label: 'Landscape & Trends', icon: IconTrend },
-    { id: 'papers', label: 'Explore Papers', icon: IconPaper },
+    { id: 'dashboard', label: 'Landscape', icon: IconTrend },
+    { id: 'papers', label: 'Papers', icon: IconPaper },
     { id: 'gaps', label: 'Research Gaps', icon: IconGaps },
     { id: 'connections', label: 'Knowledge Graph', icon: IconGraph },
     { 
@@ -39,7 +39,7 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
       icon: IconCompare,
       badge: comparisonCount > 0 ? comparisonCount : null 
     },
-    { id: 'workspace', label: 'Research Workspace', icon: IconWorkspace },
+    { id: 'workspace', label: 'Workspace', icon: IconWorkspace },
   ];
 
   const secondaryNavItems = [
@@ -47,7 +47,7 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
     { id: 'institutions', label: 'Institutions' },
     { id: 'topics', label: 'Topics' },
     { id: 'citations', label: 'Citations' },
-    { id: 'saved', label: 'Saved Papers', icon: IconBookmark },
+    { id: 'saved', label: 'Saved', icon: IconBookmark },
   ];
 
   const quickTopics = [
@@ -68,13 +68,13 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
               ResearchScope
             </div>
             <div className="brand-subtitle">
-              Academic Paper Analytics & Literature Intelligence Platform
+              Academic Paper Intelligence & Analytics
             </div>
           </div>
         </div>
 
         {/* Global Search Bar (Prominent & Spacious) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, maxWidth: '620px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, maxWidth: '580px' }}>
           <form onSubmit={handleSubmit} className="search-bar-global">
             <div className="search-input-wrapper">
               <span className="search-icon-inside">
@@ -88,13 +88,13 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <button type="submit" className="btn btn-primary" style={{ padding: '0 20px', height: '44px' }}>
+            <button type="submit" className="btn btn-primary" style={{ padding: '0 18px', height: '42px' }}>
               Analyze Domain
             </button>
           </form>
 
           {/* Quick Domain Suggestions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
               Trending:
             </span>
@@ -112,7 +112,7 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
         </div>
 
         {/* Header Right Actions: Theme Toggle & Workspace Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           {/* Dark / Light Mode Switcher (Crisp Rectangular Button) */}
           <button 
             type="button" 
@@ -134,7 +134,7 @@ export default function Header({ activeTab, setActiveTab, onSearch, comparisonCo
             title="Open Authenticated Research Workspace"
           >
             <div className="status-dot-pulse" />
-            <div>
+            <div className="workspace-user-info">
               <div className="workspace-user-name">
                 Dr. Elena Vance
               </div>

@@ -2,7 +2,6 @@ package com.researchscope.service;
 
 import com.researchscope.dto.AiAnswerResponse;
 import com.researchscope.dto.AiQuestionRequest;
-import com.researchscope.dto.AuthorDTO;
 import com.researchscope.dto.PaperDTO;
 import com.researchscope.entity.Paper;
 import com.researchscope.repository.PaperRepository;

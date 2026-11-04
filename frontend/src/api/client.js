@@ -1,5 +1,8 @@
 const getApiBase = () => {
   if (typeof window !== 'undefined') {
+    if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
+      return import.meta.env.VITE_API_BASE_URL;
+    }
     if (window.location.port === '8081' || window.location.port === '') {
       return '/api';
     }

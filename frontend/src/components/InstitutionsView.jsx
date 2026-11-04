@@ -41,7 +41,7 @@ export default function InstitutionsView() {
           <input 
             type="text" 
             className="search-input" 
-            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', flex: 1 }}
+            style={{ flex: 1 }}
             placeholder="Search university or research institution..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

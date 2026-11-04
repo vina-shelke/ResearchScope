@@ -7,7 +7,7 @@ import {
   getPaperBibTeXUrl,
   getPaperRisUrl 
 } from '../api/client';
-import { IconExternalLink, IconBookmark, IconAlert, IconCheck } from './Icons';
+import { IconExternalLink, IconAlert } from './Icons';
 
 export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddToCompare, comparisonIds = [] }) {
   if (!paper) return null;
@@ -162,7 +162,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                   <input
                     type="text"
                     className="search-input"
-                    style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                    style={{ width: '100%', height: '36px', fontSize: '12.5px' }}
                     placeholder="e.g. Favorites, Read Later"
                     value={collectionName}
                     onChange={(e) => setCollectionName(e.target.value)}
@@ -173,7 +173,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
                   <input
                     type="text"
                     className="search-input"
-                    style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                    style={{ width: '100%', height: '36px', fontSize: '12.5px' }}
                     placeholder="Key insight or study relevance..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}

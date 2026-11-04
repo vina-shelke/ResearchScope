@@ -60,7 +60,7 @@ export default function TopicsView({ onSelectPaper }) {
           <input 
             type="text" 
             className="search-input" 
-            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', flex: 1, minWidth: '220px' }}
+            style={{ flex: 1, minWidth: '220px' }}
             placeholder="Search topic or concept..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -70,7 +70,7 @@ export default function TopicsView({ onSelectPaper }) {
             <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Rows:</span>
             <select
               className="search-input"
-              style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: 'auto', padding: '8px 10px', fontSize: '13px' }}
+              style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px', height: '38px', cursor: 'pointer' }}
               value={pageSize}
               onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
             >

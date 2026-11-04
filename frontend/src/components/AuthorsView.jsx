@@ -53,7 +53,7 @@ export default function AuthorsView({ onSelectPaper }) {
           <input 
             type="text" 
             className="search-input" 
-            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', flex: 1 }}
+            style={{ flex: 1 }}
             placeholder="Search author by name..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

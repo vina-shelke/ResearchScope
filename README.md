@@ -119,6 +119,15 @@ ResearchScope combines a high-performance **Spring Boot 3 (Java 21)** backend wi
    spring.datasource.password=your_password
    ```
 
+### Environment Configuration & Secrets
+ResearchScope uses externalized environment variables for all sensitive configurations (database credentials, API keys, endpoints) with safe fallback defaults for local development.
+
+```bash
+# Copy the environment template for local configuration
+cp .env.example .env
+```
+For production deployments, GitHub Secrets setup, and encryption options (e.g. Jasypt), refer to [`SECURITY.md`](file:///Users/vina/ResearchScope/SECURITY.md).
+
 ### Running the Backend
 ```bash
 cd backend

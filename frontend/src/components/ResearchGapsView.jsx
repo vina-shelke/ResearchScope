@@ -81,7 +81,7 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
           <input
             type="text"
             className="search-input"
-            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', fontSize: '14px' }}
+            style={{ fontSize: '13.5px' }}
             placeholder="Enter research topic to discover gaps (e.g., Cybersecurity in Generative AI)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

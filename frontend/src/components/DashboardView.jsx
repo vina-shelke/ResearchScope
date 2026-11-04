@@ -74,7 +74,20 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
         </div>
 
         {/* Provenance Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12px', lineHeight: 1.4 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          flexWrap: 'wrap',
+          background: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-alt) 100%)',
+          border: '1px solid var(--border-color)',
+          borderTop: '1px solid var(--border-highlight)',
+          boxShadow: 'var(--shadow-skeuo-sm)',
+          padding: '8px 14px',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: '12px',
+          lineHeight: 1.4
+        }}>
           <span style={{ color: 'var(--text-muted)' }}>Data Transparency:</span>
           <strong>{uniqueCount.toLocaleString()} unique papers</strong>
           <span style={{ color: 'var(--text-muted)' }}>(normalized from {rawCount.toLocaleString()} raw records)</span>
@@ -125,21 +138,12 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               return (
                 <div 
                   key={idx}
-                  style={{
-                    backgroundColor: 'var(--bg-surface)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer'
-                  }}
+                  className="emerging-keyword-card"
                   onClick={() => onSearch && onSearch(item.keyword)}
                   title={`Click to analyze papers for "${item.keyword}"`}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-main)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '8px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.3 }}>
                       {item.keyword}
                     </span>
                     <span style={{
@@ -147,9 +151,10 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                       fontWeight: 700,
                       color: isPositive ? 'var(--success)' : 'var(--danger)',
                       backgroundColor: isPositive ? 'var(--success-light)' : 'var(--danger-light)',
-                      padding: '2px 6px',
+                      padding: '2px 7px',
                       borderRadius: 'var(--radius-xs)',
-                      border: `1px solid ${isPositive ? 'var(--success-border)' : 'var(--danger-border)'}`
+                      border: `1px solid ${isPositive ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                      flexShrink: 0
                     }}>
                       {isPositive ? `+${velocity}%` : `${velocity}%`}
                     </span>
@@ -178,44 +183,44 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-            <div style={{ backgroundColor: 'var(--bg-main)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div className="collab-stat-card">
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Multi-Author Rate
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', margin: '4px 0' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-main)', margin: '6px 0 2px 0' }}>
                 {collab.multiAuthorPercentage ? `${collab.multiAuthorPercentage}%` : '85.4%'}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Papers with &gt; 1 author</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Papers with &gt; 1 author</div>
             </div>
 
-            <div style={{ backgroundColor: 'var(--bg-main)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div className="collab-stat-card">
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 International Collaboration
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--success)', margin: '4px 0' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--success)', margin: '6px 0 2px 0' }}>
                 {collab.internationalCollaborationPercentage ? `${collab.internationalCollaborationPercentage}%` : '32.1%'}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cross-country co-authorships</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Cross-country co-authorships</div>
             </div>
 
-            <div style={{ backgroundColor: 'var(--bg-main)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div className="collab-stat-card">
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Multi-Institution Rate
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', margin: '4px 0' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-main)', margin: '6px 0 2px 0' }}>
                 {collab.multiInstitutionPercentage ? `${collab.multiInstitutionPercentage}%` : '48.6%'}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Affiliation diversity</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Affiliation diversity</div>
             </div>
 
-            <div style={{ backgroundColor: 'var(--bg-main)', padding: '14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div className="collab-stat-card">
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Avg Authors per Paper
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--warning)', margin: '4px 0' }}>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--warning)', margin: '6px 0 2px 0' }}>
                 {collab.averageAuthorsPerPaper ? collab.averageAuthorsPerPaper : '3.4'}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Average team scale</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Average team scale</div>
             </div>
           </div>
         </div>
@@ -238,7 +243,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Sort:</span>
               <select
                 className="search-input"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '6px 10px', fontSize: '13px', width: 'auto' }}
+                style={{ padding: '6px 12px', fontSize: '12.5px', width: 'auto', height: '36px', cursor: 'pointer' }}
                 value={sortBy}
                 onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
               >
@@ -251,7 +256,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <select
                 className="search-input"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', padding: '6px 10px', fontSize: '13px', width: 'auto' }}
+                style={{ padding: '6px 12px', fontSize: '12.5px', width: 'auto', height: '36px', cursor: 'pointer' }}
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
               >
@@ -456,17 +461,8 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                 {summary.topTopics.slice(0, 7).map((topic, idx) => (
                   <div 
                     key={topic.id || idx}
+                    className="topic-rank-card"
                     onClick={() => onSelectTopic(topic.id)}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
-                      backgroundColor: 'var(--bg-main)'
-                    }}
                   >
                     <span style={{ fontWeight: 600, fontSize: '13px' }}>{topic.name}</span>
                     <span className="tag tag-accent">{topic.paperCount || 0} papers</span>

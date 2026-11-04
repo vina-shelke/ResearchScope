@@ -1,25 +1,95 @@
-# Java / Maven
-target/
-*.class
-*.jar
-.mvn/wrapper/maven-wrapper.jar
+# ==============================================================================
+# ResearchScope - Comprehensive Git Ignore
+# ==============================================================================
 
-# React / Node
-node_modules/
-dist/
-build/
-
-# Environment and secrets
+# ------------------------------------------------------------------------------
+# Secrets, Environment Files & Credentials
+# ------------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
 application-local.properties
 application-local.yml
+application-*.local.yml
+credentials.json
+client_secret*.json
+service-account*.json
+google-services.json
+*.pem
+*.key
+*.pkcs12
+*.p12
+*.jks
+*.keystore
+*.cert
+*.crt
+*.bak
+*.dump
+*.sql.gz
 
-# IDE and operating system
+# ------------------------------------------------------------------------------
+# Java / Maven Build Artifacts
+# ------------------------------------------------------------------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+.mvn/wrapper/maven-wrapper.jar
+
+# ------------------------------------------------------------------------------
+# Node / Frontend Artifacts
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/node_modules/
+dist/
+dist-ssr/
+build/
+.eslintcache
+.stylelintcache
+
+# ------------------------------------------------------------------------------
+# IDE & Operating System Files
+# ------------------------------------------------------------------------------
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
 
-# Logs
+# ------------------------------------------------------------------------------
+# Logs & Process Artifacts
+# ------------------------------------------------------------------------------
 *.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------------------------------------------------------
+# Test Coverage & Temp Files
+# ------------------------------------------------------------------------------
+coverage/
+.nyc_output/
+.tmp/
+tmp/
+temp/

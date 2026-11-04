@@ -205,7 +205,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input
                 type="text"
                 className="search-input"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%', padding: '10px 14px', fontSize: '14px' }}
+                style={{ width: '100%', padding: '10px 14px', fontSize: '13.5px' }}
                 placeholder="e.g., Explainable zero-shot transfer learning with vision-language models for biomedical imaging"
                 value={semanticQuery}
                 onChange={(e) => setSemanticQuery(e.target.value)}
@@ -222,7 +222,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 placeholder="e.g. Generative AI"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -234,7 +234,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 placeholder="e.g. Smith"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
@@ -246,7 +246,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="text" 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 placeholder="e.g. Stanford"
                 value={institution}
                 onChange={(e) => setInstitution(e.target.value)}
@@ -258,7 +258,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="number" 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 placeholder="e.g. 2024"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
@@ -269,7 +269,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Open Access</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 value={isOpenAccess}
                 onChange={(e) => setIsOpenAccess(e.target.value)}
               >
@@ -283,7 +283,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Paper Type</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 value={paperType}
                 onChange={(e) => setPaperType(e.target.value)}
               >
@@ -299,7 +299,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Source Provider</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
               >
@@ -315,7 +315,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <input 
                 type="number" 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 placeholder="e.g. 5"
                 value={minCitations}
                 onChange={(e) => setMinCitations(e.target.value)}
@@ -326,7 +326,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Sort By</label>
               <select 
                 className="search-input" 
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', width: '100%' }}
+                style={{ width: '100%' }}
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >

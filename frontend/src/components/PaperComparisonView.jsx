@@ -229,7 +229,7 @@ export default function PaperComparisonView({
             <input
               type="text"
               className="search-input"
-              style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', fontSize: '13px', padding: '6px 12px' }}
+              style={{ fontSize: '12.5px', padding: '6px 14px' }}
               placeholder="Search paper title to add to comparison..."
               value={searchAddQuery}
               onChange={(e) => setSearchAddQuery(e.target.value)}

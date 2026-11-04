@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 spring:
   application:
@@ -11,23 +11,30 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: false
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: false
         dialect: org.hibernate.dialect.MySQLDialect
+
+ai:
+  assistant:
+    gemini-api-key: ${GEMINI_API_KEY:}
+    openai-api-key: ${OPENAI_API_KEY:}
+
+scholarly:
+  openalex:
+    base-url: ${OPENALEX_BASE_URL:https://api.openalex.org}
+    mailto: ${OPENALEX_MAILTO:}
+  crossref:
+    base-url: ${CROSSREF_BASE_URL:https://api.crossref.org}
+  semanticscholar:
+    base-url: ${SEMANTIC_SCHOLAR_BASE_URL:https://api.semanticscholar.org/graph/v1}
+    api-key: ${SEMANTIC_SCHOLAR_API_KEY:}
 
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
-
-scholarly:
-  openalex:
-    base-url: https://api.openalex.org
-  crossref:
-    base-url: https://api.crossref.org
-  semanticscholar:
-    base-url: https://api.semanticscholar.org/graph/v1

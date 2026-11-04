@@ -15,7 +15,7 @@ import {
   getWorkspaceBibTeXUrl,
   getWorkspaceCsvUrl
 } from '../api/client';
-import { IconDownload, IconClose, IconPencil, IconBookmark } from './Icons';
+import { IconDownload, IconClose, IconPencil } from './Icons';
 import { useToast } from './Toast';
 
 export default function WorkspaceView({ onSelectPaper, onRunSearch, onLoadComparison, onOpenAuthModal, currentUser }) {
@@ -327,13 +327,27 @@ export default function WorkspaceView({ onSelectPaper, onRunSearch, onLoadCompar
               <input
                 type="text"
                 className="search-input"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', marginBottom: '10px' }}
+                style={{ marginBottom: '10px' }}
                 placeholder="Project title (e.g. Adversarial Robustness in LLMs Dissertation Chapter)..."
                 value={newProjectTitle}
                 onChange={(e) => setNewProjectTitle(e.target.value)}
               />
               <textarea
-                style={{ width: '100%', fontSize: '13px', padding: '8px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', marginBottom: '10px', height: '60px', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                style={{
+                  width: '100%',
+                  fontSize: '13px',
+                  padding: '10px 14px',
+                  border: '1px solid var(--search-input-border)',
+                  borderTop: '1px solid var(--border-shadow)',
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: '12px',
+                  height: '70px',
+                  backgroundColor: 'var(--search-input-bg)',
+                  color: 'var(--search-input-color)',
+                  boxShadow: 'var(--shadow-skeuo-inset)',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit'
+                }}
                 placeholder="Project objectives, research questions, or scope..."
                 value={newProjectDesc}
                 onChange={(e) => setNewProjectDesc(e.target.value)}
