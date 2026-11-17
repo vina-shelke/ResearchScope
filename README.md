@@ -1,5 +1,5 @@
-# ResearchScope — Advanced Research Paper Intelligence & Analytics Platform
 
+<<<<<<< HEAD
 ResearchScope is an academic research intelligence and analytics platform designed to collect, deduplicate, analyze, and synthesize scholarly literature from multiple authoritative providers (**OpenAlex**, **Crossref**, and **Semantic Scholar**).
 
 ---
@@ -198,3 +198,5 @@ mvn test
 
 ## 📜 License
 Academic and Research Use Only. Built with data provided by OpenAlex, Crossref, and Semantic Scholar.
+=======
+>>>>>>> e5ba733b8e4b4d74ecd5130ad2f5420735da9f61

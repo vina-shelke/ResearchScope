@@ -2,6 +2,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { fetchResearchGraph, fetchResearchGraphFiltered, fetchGraphExpanded } from '../api/client';
 import { IconInfo, IconSearch } from './Icons';
 
+// Viewport layout dimensions: Clean academic diagram coordinate space
+const CANVAS_WIDTH = 1140;
+const CANVAS_HEIGHT = 680;
+
 export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
@@ -9,6 +13,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
   const [hoveredNode, setHoveredNode] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [filterType, setFilterType] = useState('ALL'); // ALL, Paper, Author, Institution, Topic
+  const [densityMode, setDensityMode] = useState('focused'); // 'focused' (clean, spaced, non-colliding) vs 'all'
   const [activeRelations, setActiveRelations] = useState({
     WROTE: true,
     HAS_TOPIC: true,
@@ -21,13 +26,14 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [expansionNotice, setExpansionNotice] = useState('');
   const [isLight, setIsLight] = useState(false);
+  const [showScrollHint, setShowScrollHint] = useState(false);
 
   // Node position map: { [id]: { x, y } }
   const [nodePositions, setNodePositions] = useState({});
 
-  // Pan and Zoom (default zoom 0.82 to show full graph panorama)
-  const [pan, setPan] = useState({ x: 30, y: 15 });
-  const [zoom, setZoom] = useState(0.82);
+  // Pan and Zoom: Centered at 100% scale by default
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
@@ -37,6 +43,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
   const svgRef = useRef(null);
   const searchContainerRef = useRef(null);
+  const scrollHintTimeoutRef = useRef(null);
 
   // Detect Theme (Light vs Dark) for SVG high-contrast highlights
   useEffect(() => {
@@ -61,103 +68,142 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Structured Initial Layout: Papers in Center Hub, Authors on Left, Institutions & Topics on Right
-  const layoutInitialNodes = useCallback((nodes) => {
-    if (!nodes || nodes.length === 0) return;
+  // Strict Pan Bounding: Keeps the graph strictly inside the visible viewport
+  const clampPan = useCallback((newPan, currentZoom) => {
+    const viewWidth = svgRef.current?.clientWidth || CANVAS_WIDTH;
+    const viewHeight = svgRef.current?.clientHeight || CANVAS_HEIGHT;
+
+    const contentWidth = CANVAS_WIDTH * currentZoom;
+    const contentHeight = CANVAS_HEIGHT * currentZoom;
+
+    // Allowed margin: Never let graph slide completely out of view
+    const marginX = Math.max(60, viewWidth * 0.2);
+    const marginY = Math.max(50, viewHeight * 0.2);
+
+    const minX = viewWidth - contentWidth - marginX;
+    const maxX = marginX;
+    const minY = viewHeight - contentHeight - marginY;
+    const maxY = marginY;
+
+    return {
+      x: Math.round(Math.max(Math.min(minX, maxX), Math.min(Math.max(minX, maxX), newPan.x))),
+      y: Math.round(Math.max(Math.min(minY, maxY), Math.min(Math.max(minY, maxY), newPan.y)))
+    };
+  }, []);
+
+  // 1. Filter and Prioritize Nodes by Scholarly Connection Degree
+  const { visibleNodes, visibleLinks, entityCounts } = useMemo(() => {
+    if (!graphData.nodes || graphData.nodes.length === 0) {
+      return { visibleNodes: [], visibleLinks: [], entityCounts: { Author: 0, Paper: 0, Institution: 0, Topic: 0 } };
+    }
+
+    const allPapers = graphData.nodes.filter(n => n.type === 'Paper');
+    const allAuthors = graphData.nodes.filter(n => n.type === 'Author');
+    const allInstitutions = graphData.nodes.filter(n => n.type === 'Institution');
+    const allTopics = graphData.nodes.filter(n => n.type === 'Topic');
+
+    const entityCounts = {
+      Paper: allPapers.length,
+      Author: allAuthors.length,
+      Institution: allInstitutions.length,
+      Topic: allTopics.length
+    };
+
+    // Calculate connection degree (how many links connect this entity to papers in view)
+    const degreeMap = new Map();
+    graphData.links.forEach(l => {
+      degreeMap.set(l.source, (degreeMap.get(l.source) || 0) + 1);
+      degreeMap.set(l.target, (degreeMap.get(l.target) || 0) + 1);
+    });
+
+    const sortByDegree = (arr) => [...arr].sort((a, b) => (degreeMap.get(b.id) || 0) - (degreeMap.get(a.id) || 0));
+
+    let selectedPapers = allPapers;
+    let selectedAuthors = allAuthors;
+    let selectedInstitutions = allInstitutions;
+    let selectedTopics = allTopics;
+
+    // In 'focused' mode: Prioritize top-connected entities with generous vertical breathing room
+    if (densityMode === 'focused') {
+      selectedAuthors = sortByDegree(allAuthors).slice(0, 14);
+      selectedInstitutions = sortByDegree(allInstitutions).slice(0, 8);
+      selectedTopics = sortByDegree(allTopics).slice(0, 14);
+    }
+
+    // Apply entity type filter if specified
+    let nodes = [];
+    if (filterType === 'ALL') {
+      nodes = [...selectedAuthors, ...selectedPapers, ...selectedInstitutions, ...selectedTopics];
+    } else if (filterType === 'Paper') {
+      nodes = selectedPapers;
+    } else if (filterType === 'Author') {
+      nodes = [...selectedAuthors, ...selectedPapers];
+    } else if (filterType === 'Institution') {
+      nodes = [...selectedInstitutions, ...selectedPapers];
+    } else if (filterType === 'Topic') {
+      nodes = [...selectedTopics, ...selectedPapers];
+    }
+
+    const validIds = new Set(nodes.map(n => n.id));
+    const links = graphData.links.filter(l => {
+      const rel = l.relationship || l.type;
+      const typeAllowed = activeRelations[rel] !== false;
+      return typeAllowed && validIds.has(l.source) && validIds.has(l.target);
+    });
+
+    return { visibleNodes: nodes, visibleLinks: links, entityCounts };
+  }, [graphData, filterType, activeRelations, densityMode]);
+
+  // 2. Structured Layout Engine: Positions ONLY Visible Nodes with Guaranteed Non-Colliding Text Zones
+  // Zone 1: Authors (x = 180, text points LEFT <-)
+  // Zone 2: Papers Core Hub (x = 450, text points RIGHT ->)
+  // Zone 3: Institutions (x = 760, text points LEFT <-)
+  // Zone 4: Topics (x = 950, text points RIGHT ->)
+  const layoutNodes = useCallback((nodes) => {
+    if (!nodes || nodes.length === 0) return {};
 
     const authors = nodes.filter(n => n.type === 'Author');
     const papers = nodes.filter(n => n.type === 'Paper');
     const institutions = nodes.filter(n => n.type === 'Institution');
     const topics = nodes.filter(n => n.type === 'Topic');
 
-    // Column positions across 1600px topology space:
-    // Col 1: Authors (x ~ 200)
-    // Col 2: Papers - Core Hub (x = 640)
-    // Col 3: Institutions (x ~ 1060)
-    // Col 4: Topics (x ~ 1440)
-    const paddingY = 80;
-    const baseSpacingY = 48; // minimum vertical spacing between nodes to prevent label overlap
+    const paddingY = 85;
+    const maxY = 625;
+    const availableHeight = maxY - paddingY; // 540px vertical room
     const positions = {};
 
-    // Helper: Staggers dense columns into two alternating sub-lanes to double vertical spacing
-    const placeColumn = (items, centerX, stagger = false) => {
+    const placeColumn = (items, centerX) => {
       if (items.length === 0) return;
-
-      if (!stagger || items.length <= 10) {
-        const totalHeight = Math.max(560, items.length * baseSpacingY);
-        const stepY = items.length <= 1 ? 0 : (totalHeight - paddingY * 2) / (items.length - 1);
-        items.forEach((item, idx) => {
-          positions[item.id] = {
-            x: centerX,
-            y: items.length === 1 ? 330 : paddingY + idx * stepY
-          };
-        });
-      } else {
-        // Dense column (> 10 items): Stagger into dual sub-lanes (centerX ± 45px)
-        const rows = Math.ceil(items.length / 2);
-        const totalHeight = Math.max(620, rows * 44);
-        const stepY = rows <= 1 ? 0 : (totalHeight - paddingY * 2) / (rows - 1);
-
-        items.forEach((item, idx) => {
-          const row = Math.floor(idx / 2);
-          const isOdd = idx % 2 === 1;
-          positions[item.id] = {
-            x: isOdd ? centerX + 45 : centerX - 45,
-            y: paddingY + row * stepY + (isOdd ? stepY * 0.45 : 0)
-          };
-        });
-      }
+      const stepY = items.length <= 1 ? 0 : availableHeight / (items.length - 1);
+      items.forEach((item, idx) => {
+        positions[item.id] = {
+          x: centerX,
+          y: items.length === 1 ? 350 : Math.round(paddingY + idx * stepY)
+        };
+      });
     };
 
-    placeColumn(authors, 200, true);
-    placeColumn(papers, 640, false); // Papers stay aligned down the central hub
-    placeColumn(institutions, 1060, true);
-    placeColumn(topics, 1440, true);
+    placeColumn(authors, 180);
+    placeColumn(papers, 450);
+    placeColumn(institutions, 760);
+    placeColumn(topics, 950);
 
-    setNodePositions(positions);
     return positions;
   }, []);
 
-  // Auto-center and fit graph topology comfortably inside the SVG viewport
-  const fitPositionsToView = useCallback((positions) => {
-    if (!positions || Object.keys(positions).length === 0) return;
+  // Centering & Fitting: Centers the canvas cleanly inside the container
+  const fitPositionsToView = useCallback(() => {
+    const rect = svgRef.current ? svgRef.current.getBoundingClientRect() : null;
+    const viewWidth = (rect && rect.width > 0) ? rect.width : CANVAS_WIDTH;
+    const viewHeight = (rect && rect.height > 0) ? rect.height : CANVAS_HEIGHT;
 
-    const measureAndFit = () => {
-      const rect = svgRef.current ? svgRef.current.getBoundingClientRect() : null;
-      const viewWidth = (rect && rect.width > 0) ? rect.width : 1150;
-      const viewHeight = (rect && rect.height > 0) ? rect.height : 680;
+    // Scale to fit width while keeping zoom bounded between 0.75 and 1.0
+    const targetZoom = Math.min(Math.max(viewWidth / CANVAS_WIDTH, 0.75), 1.0);
+    const targetPanX = Math.round((viewWidth - CANVAS_WIDTH * targetZoom) / 2);
+    const targetPanY = Math.round((viewHeight - CANVAS_HEIGHT * targetZoom) / 2);
 
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      Object.values(positions).forEach(pos => {
-        if (pos.x < minX) minX = pos.x;
-        if (pos.x > maxX) maxX = pos.x;
-        if (pos.y < minY) minY = pos.y;
-        if (pos.y > maxY) maxY = pos.y;
-      });
-
-      if (minX === Infinity) return;
-
-      const padX = 70;
-      const padY = 60;
-      const graphWidth = maxX - minX + padX * 2;
-      const graphHeight = maxY - minY + padY * 2;
-
-      // Calculate scale to fit without making nodes too small (bounded between 0.55 and 1.05)
-      const scaleX = viewWidth / Math.max(graphWidth, 400);
-      const scaleY = viewHeight / Math.max(graphHeight, 400);
-      const targetZoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.55), 1.05);
-
-      const graphCenterX = (minX + maxX) / 2;
-      const graphCenterY = (minY + maxY) / 2;
-
-      setZoom(targetZoom);
-      setPan({
-        x: Math.round((viewWidth / 2) - graphCenterX * targetZoom),
-        y: Math.round((viewHeight / 2) - graphCenterY * targetZoom)
-      });
-    };
-
-    requestAnimationFrame(measureAndFit);
+    setZoom(targetZoom);
+    setPan({ x: targetPanX, y: targetPanY });
   }, []);
 
   // Initial Data Load
@@ -177,17 +223,12 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           return;
         }
         setGraphData(data);
-        const positions = layoutInitialNodes(data.nodes);
-        fitPositionsToView(positions);
       } catch (err) {
         console.error('Error fetching research graph:', err);
-        // Fallback
         try {
           const fallbackData = await fetchResearchGraph('');
           if (fallbackData && fallbackData.nodes) {
             setGraphData(fallbackData);
-            const positions = layoutInitialNodes(fallbackData.nodes);
-            fitPositionsToView(positions);
           }
         } catch (e) {
           console.error('Fallback failed:', e);
@@ -198,7 +239,16 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     };
 
     loadGraph();
-  }, [nodeLimit, layoutInitialNodes, fitPositionsToView]);
+  }, [nodeLimit]);
+
+  // Re-calculate layout positions whenever visible nodes change
+  useEffect(() => {
+    if (visibleNodes.length > 0) {
+      const positions = layoutNodes(visibleNodes);
+      setNodePositions(positions);
+      fitPositionsToView();
+    }
+  }, [visibleNodes, layoutNodes, fitPositionsToView]);
 
   // Toggle relation type filter
   const toggleRelation = (type) => {
@@ -226,19 +276,6 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
         const existingLinkKeys = new Set(prev.links.map(l => `${l.source}->${l.target}:${l.relationship || l.type}`));
         const newLinks = result.links.filter(l => !existingLinkKeys.has(`${l.source}->${l.target}:${l.relationship || l.type}`));
 
-        // Place new nodes dynamically clustered around parent node
-        const parentPos = nodePositions[node.id] || { x: 640, y: 330 };
-        const updatedPositions = { ...nodePositions };
-        const radius = 130;
-        newNodes.forEach((n, idx) => {
-          const angle = (idx / Math.max(newNodes.length, 1)) * 2 * Math.PI;
-          updatedPositions[n.id] = {
-            x: Math.max(80, Math.min(1540, parentPos.x + radius * Math.cos(angle))),
-            y: Math.max(80, Math.min(680, parentPos.y + radius * Math.sin(angle)))
-          };
-        });
-        setNodePositions(updatedPositions);
-
         setExpansionNotice(`Added ${newNodes.length} new nodes and ${newLinks.length} connections to graph.`);
         setTimeout(() => setExpansionNotice(''), 3500);
 
@@ -255,25 +292,6 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
       setExpanding(false);
     }
   };
-
-  // Filter nodes & links
-  const { visibleNodes, visibleLinks } = useMemo(() => {
-    if (!graphData.nodes) return { visibleNodes: [], visibleLinks: [] };
-
-    let nodes = graphData.nodes;
-    if (filterType !== 'ALL') {
-      nodes = nodes.filter(n => n.type === filterType || n.type === 'Paper');
-    }
-
-    const validIds = new Set(nodes.map(n => n.id));
-    const links = graphData.links.filter(l => {
-      const rel = l.relationship || l.type;
-      const typeAllowed = activeRelations[rel] !== false;
-      return typeAllowed && validIds.has(l.source) && validIds.has(l.target);
-    });
-
-    return { visibleNodes: nodes, visibleLinks: links };
-  }, [graphData, filterType, activeRelations]);
 
   // Color mappings (Sober, Academic, Skeuomorphic)
   const getNodeColor = (type) => {
@@ -349,30 +367,37 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
       .slice(0, 8);
   }, [searchQuery, graphData.nodes]);
 
-  // Focus and Center camera smoothly onto a target node at comfortable readable zoom
+  // Focus and Center camera smoothly onto a target node
   const handleFocusNode = useCallback((node) => {
     if (!node || !svgRef.current) return;
     setSelectedNode(node);
     const pos = nodePositions[node.id];
     if (pos) {
       const rect = svgRef.current.getBoundingClientRect();
-      const viewWidth = rect.width || 1150;
-      const viewHeight = rect.height || 680;
+      const viewWidth = rect.width || CANVAS_WIDTH;
+      const viewHeight = rect.height || CANVAS_HEIGHT;
 
-      // Ensure comfortable reading scale: between 0.85 and 1.25
       const targetZoom = Math.min(Math.max(zoom, 0.85), 1.25);
+      const rawPanX = (viewWidth / 2) - pos.x * targetZoom;
+      const rawPanY = (viewHeight / 2) - pos.y * targetZoom;
+
       setZoom(targetZoom);
-      setPan({
-        x: Math.round((viewWidth / 2) - pos.x * targetZoom),
-        y: Math.round((viewHeight / 2) - pos.y * targetZoom)
-      });
+      setPan(clampPan({ x: rawPanX, y: rawPanY }, targetZoom));
     }
     setSearchDropdownOpen(false);
-  }, [nodePositions, zoom]);
+  }, [nodePositions, zoom, clampPan]);
 
-  // Canvas Interactions: Anchored Wheel / Trackpad Zoom
-  // Crucial: Anchors zoom to the mouse cursor position so the graph never slides into a corner!
+  // Canvas Interactions: Intentional Modifier Zoom (Prevents Scroll Trapping)
   const handleWheel = (e) => {
+    const isZoomKey = e.metaKey || e.ctrlKey;
+
+    if (!isZoomKey) {
+      setShowScrollHint(true);
+      if (scrollHintTimeoutRef.current) clearTimeout(scrollHintTimeoutRef.current);
+      scrollHintTimeoutRef.current = setTimeout(() => setShowScrollHint(false), 2000);
+      return;
+    }
+
     e.preventDefault();
     if (!svgRef.current) return;
 
@@ -380,21 +405,17 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Dampen wheel delta to smoothly handle both traditional mouse wheels and Apple trackpads
-    const clampedDelta = -Math.max(-60, Math.min(60, e.deltaY));
-    const zoomFactor = Math.exp(clampedDelta * 0.003);
+    const clampedDelta = -Math.max(-40, Math.min(40, e.deltaY));
+    const zoomFactor = Math.exp(clampedDelta * 0.002);
 
     setZoom(prevZoom => {
-      // Hard clamp: Minimum zoom 0.55 (prevents graph from shrinking to a corner dot), maximum 2.2
-      const nextZoom = Math.min(Math.max(prevZoom * zoomFactor, 0.55), 2.2);
+      const nextZoom = Math.min(Math.max(prevZoom * zoomFactor, 0.65), 1.8);
       if (Math.abs(nextZoom - prevZoom) < 0.001) return prevZoom;
 
-      // Adjust pan so the graph coordinate under the cursor stays exactly under the cursor
-      setPan(prevPan => ({
-        x: Math.round(mouseX - (mouseX - prevPan.x) * (nextZoom / prevZoom)),
-        y: Math.round(mouseY - (mouseY - prevPan.y) * (nextZoom / prevZoom))
-      }));
+      const rawPanX = mouseX - (mouseX - pan.x) * (nextZoom / prevZoom);
+      const rawPanY = mouseY - (mouseY - pan.y) * (nextZoom / prevZoom);
 
+      setPan(clampPan({ x: rawPanX, y: rawPanY }, nextZoom));
       return nextZoom;
     });
   };
@@ -407,15 +428,13 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     const centerY = rect.height / 2;
 
     setZoom(prevZoom => {
-      const nextZoom = Math.min(Math.max(prevZoom * factor, 0.55), 2.2);
+      const nextZoom = Math.min(Math.max(prevZoom * factor, 0.65), 1.8);
       if (Math.abs(nextZoom - prevZoom) < 0.001) return prevZoom;
 
-      // Adjust pan to zoom directly from center of viewport, never drifting into corners
-      setPan(prevPan => ({
-        x: Math.round(centerX - (centerX - prevPan.x) * (nextZoom / prevZoom)),
-        y: Math.round(centerY - (centerY - prevPan.y) * (nextZoom / prevZoom))
-      }));
+      const rawPanX = centerX - (centerX - pan.x) * (nextZoom / prevZoom);
+      const rawPanY = centerY - (centerY - pan.y) * (nextZoom / prevZoom);
 
+      setPan(clampPan({ x: rawPanX, y: rawPanY }, nextZoom));
       return nextZoom;
     });
   };
@@ -432,16 +451,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     if (isPanning) {
       const rawX = e.clientX - panStart.x;
       const rawY = e.clientY - panStart.y;
-
-      // Keep graph bounded within reasonable viewport bounds
-      const rect = svgRef.current ? svgRef.current.getBoundingClientRect() : { width: 1150, height: 680 };
-      const limitX = rect.width * 1.2;
-      const limitY = rect.height * 1.2;
-
-      setPan({
-        x: Math.max(-limitX, Math.min(limitX, rawX)),
-        y: Math.max(-limitY, Math.min(limitY, rawY))
-      });
+      setPan(clampPan({ x: rawX, y: rawY }, zoom));
     } else if (draggingNodeId && svgRef.current) {
       const rect = svgRef.current.getBoundingClientRect();
       const currentMouseX = (e.clientX - rect.left - pan.x) / zoom;
@@ -466,7 +476,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
   const handleNodeMouseDown = (e, node) => {
     e.stopPropagation();
     setDraggingNodeId(node.id);
-    const pos = nodePositions[node.id] || { x: 640, y: 330 };
+    const pos = nodePositions[node.id] || { x: 450, y: 350 };
     if (svgRef.current) {
       const rect = svgRef.current.getBoundingClientRect();
       const mouseX = (e.clientX - rect.left - pan.x) / zoom;
@@ -478,9 +488,11 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     }
   };
 
+  // Reset View: Fits graph centered in viewport
   const resetView = () => {
-    const positions = layoutInitialNodes(graphData.nodes);
-    fitPositionsToView(positions);
+    const positions = layoutNodes(visibleNodes);
+    setNodePositions(positions);
+    fitPositionsToView();
     setSelectedNode(null);
   };
 
@@ -514,9 +526,9 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
         {/* View Controls */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => handleZoomStep(1.18)} title="Zoom In">+</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => handleZoomStep(1.15)} title="Zoom In">+</button>
           <button className="btn btn-secondary btn-sm" onClick={() => handleZoomStep(0.85)} title="Zoom Out">−</button>
-          <button className="btn btn-secondary btn-sm" onClick={resetView} title="Auto-center and fit graph to viewport">Fit View</button>
+          <button className="btn btn-secondary btn-sm" onClick={resetView} title="Reset view and fit graph">Fit View</button>
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', minWidth: '42px', textAlign: 'right' }}>
             {Math.round(zoom * 100)}%
           </span>
@@ -527,21 +539,46 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
       <div className="panel" style={{ marginBottom: '16px', padding: '14px 18px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           
-          {/* Top row: Entity Filters, Graph Depth & Instant Search */}
+          {/* Top row: Density Switch, Entity Filters, Graph Depth & Instant Search */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Entity Filter:
-              </span>
-              {['ALL', 'Paper', 'Author', 'Institution', 'Topic'].map(type => (
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+              
+              {/* Density Mode Selector (Focused vs All) */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '14px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Layout:
+                </span>
                 <button
-                  key={type}
-                  className={`btn btn-sm ${filterType === type ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setFilterType(type)}
+                  className={`btn btn-sm ${densityMode === 'focused' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setDensityMode('focused')}
+                  title="Clean high-signal layout with generous vertical spacing and zero label collisions"
                 >
-                  {type === 'ALL' ? 'All Entities' : type + 's'}
+                  Focused (Clean)
                 </button>
-              ))}
+                <button
+                  className={`btn btn-sm ${densityMode === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setDensityMode('all')}
+                  title="Display all indexed entities"
+                >
+                  All ({graphData.nodes?.length || 0})
+                </button>
+              </div>
+
+              {/* Entity Type Filter */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Entity:
+                </span>
+                {['ALL', 'Paper', 'Author', 'Institution', 'Topic'].map(type => (
+                  <button
+                    key={type}
+                    className={`btn btn-sm ${filterType === type ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setFilterType(type)}
+                  >
+                    {type === 'ALL' ? 'All' : type + 's'}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -674,44 +711,65 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
             </div>
           </div>
 
-          {/* Bottom row: Relationship Types */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Relationship Types:
-            </span>
-            {[
-              { key: 'WROTE', label: 'Co-authorship (WROTE)', color: '#10b981' },
-              { key: 'AFFILIATED_WITH', label: 'Affiliations (AFFILIATED_WITH)', color: '#f59e0b' },
-              { key: 'HAS_TOPIC', label: 'Topic Taxonomy (HAS_TOPIC)', color: '#8b5cf6' },
-              { key: 'CITES', label: 'Citations (CITES)', color: '#3b82f6' },
-              { key: 'SIMILAR_TOPIC', label: 'Topic Similarity (SIMILAR_TOPIC)', color: '#94a3b8' },
-            ].map(rel => (
-              <label 
-                key={rel.key} 
-                style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  fontSize: '12px', 
-                  cursor: 'pointer',
-                  backgroundColor: activeRelations[rel.key] ? 'var(--bg-main)' : 'transparent',
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `1px solid ${activeRelations[rel.key] ? rel.color : 'var(--border-color)'}`,
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={Boolean(activeRelations[rel.key])}
-                  onChange={() => toggleRelation(rel.key)}
-                  style={{ accentColor: rel.color }}
-                />
-                <span style={{ fontWeight: 600, color: activeRelations[rel.key] ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                  {rel.label}
-                </span>
-              </label>
-            ))}
+          {/* Bottom row: Relationship Types & Integrated Entity Legend */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Relationship Types:
+              </span>
+              {[
+                { key: 'WROTE', label: 'Co-authorship (WROTE)', color: '#10b981' },
+                { key: 'AFFILIATED_WITH', label: 'Affiliations (AFFILIATED_WITH)', color: '#f59e0b' },
+                { key: 'HAS_TOPIC', label: 'Topic Taxonomy (HAS_TOPIC)', color: '#8b5cf6' },
+                { key: 'CITES', label: 'Citations (CITES)', color: '#3b82f6' },
+                { key: 'SIMILAR_TOPIC', label: 'Topic Similarity (SIMILAR_TOPIC)', color: '#94a3b8' },
+              ].map(rel => (
+                <label 
+                  key={rel.key} 
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    fontSize: '12px', 
+                    cursor: 'pointer',
+                    backgroundColor: activeRelations[rel.key] ? 'var(--bg-main)' : 'transparent',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: `1px solid ${activeRelations[rel.key] ? rel.color : 'var(--border-color)'}`,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(activeRelations[rel.key])}
+                    onChange={() => toggleRelation(rel.key)}
+                    style={{ accentColor: rel.color }}
+                  />
+                  <span style={{ fontWeight: 600, color: activeRelations[rel.key] ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                    {rel.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {/* Entity Color Legend (Cleanly placed in toolbar so it never covers canvas column headers) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--bg-surface-elevated)', padding: '4px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '4px' }}>
+                Legend:
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)', marginRight: '6px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></div> Paper
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)', marginRight: '6px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div> Author
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)', marginRight: '6px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></div> Institution
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8b5cf6' }}></div> Topic
+              </div>
+            </div>
           </div>
 
         </div>
@@ -737,7 +795,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
       <div 
         className="graph-container" 
         style={{ 
-          height: '680px', 
+          height: `${CANVAS_HEIGHT}px`, 
           backgroundColor: 'var(--graph-bg)', 
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-md)', 
@@ -748,65 +806,33 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           boxShadow: 'var(--shadow-skeuo-card)'
         }}
       >
-        {/* Tier Column Headers across top */}
-        <div style={{
-          position: 'absolute',
-          top: '12px',
-          left: '20px',
-          right: '220px',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr 1fr',
-          pointerEvents: 'none',
-          color: 'var(--text-muted)',
-          fontSize: '11px',
-          fontWeight: 700,
-          letterSpacing: '0.07em',
-          textTransform: 'uppercase',
-          textAlign: 'center'
-        }}>
-          <div>Authors</div>
-          <div style={{ color: 'var(--text-main)', fontWeight: 800 }}>Papers (Core Hub)</div>
-          <div>Institutions</div>
-          <div>Topics</div>
-        </div>
-
-        {/* Legend */}
-        <div
-          className="graph-legend"
-          style={{
+        {/* Polite Notification Toast when scrolling without ⌘/Ctrl key */}
+        {showScrollHint && (
+          <div style={{
             position: 'absolute',
-            top: '14px',
-            right: '16px',
+            bottom: '48px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
-            boxShadow: 'var(--shadow-skeuo-sm)',
+            boxShadow: 'var(--shadow-skeuo-modal)',
+            padding: '7px 16px',
             borderRadius: 'var(--radius-sm)',
-            padding: '8px 14px',
-            zIndex: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px'
-          }}
-        >
-          <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#3b82f6' }}></div> Paper
+            fontSize: '12px',
+            fontWeight: 600,
+            color: 'var(--text-main)',
+            pointerEvents: 'none',
+            zIndex: 30
+          }}>
+            Hold ⌘ or Ctrl while scrolling to zoom canvas, or use + / − buttons
           </div>
-          <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div> Author
-          </div>
-          <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }}></div> Institution
-          </div>
-          <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8b5cf6' }}></div> Topic
-          </div>
-        </div>
+        )}
 
         {/* Canvas Helpful Tip */}
         <div style={{
           position: 'absolute',
           bottom: '12px',
-          left: '16px',
+          left: '14px',
           color: 'var(--text-muted)',
           fontSize: '11px',
           pointerEvents: 'none',
@@ -817,17 +843,18 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           padding: '4px 10px',
           borderRadius: 'var(--radius-xs)',
           border: '1px solid var(--border-color)',
-          boxShadow: 'var(--shadow-skeuo-sm)'
+          boxShadow: 'var(--shadow-skeuo-sm)',
+          zIndex: 10
         }}>
           <IconInfo size={13} />
-          <span>Click any node to illuminate connections • Drag to pan • Scroll to zoom • Reposition nodes</span>
+          <span>Click any node to inspect • Drag canvas to pan • Use + / − or ⌘+Scroll to zoom</span>
         </div>
 
         {/* Total loaded summary badge */}
         <div style={{
           position: 'absolute',
           bottom: '12px',
-          right: '16px',
+          right: '14px',
           color: 'var(--text-muted)',
           fontSize: '11px',
           fontWeight: 600,
@@ -835,9 +862,10 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           backgroundColor: 'var(--bg-surface)',
           padding: '4px 10px',
           borderRadius: 'var(--radius-xs)',
-          border: '1px solid var(--border-color)'
+          border: '1px solid var(--border-color)',
+          zIndex: 10
         }}>
-          {visibleNodes.length} entities • {visibleLinks.length} connections
+          {visibleNodes.length} visible entities • {visibleLinks.length} connections
         </div>
 
         <svg 
@@ -863,20 +891,49 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           <rect id="canvas-bg" width="100%" height="100%" fill="transparent" />
 
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {/* Subtle Tier Column Guidelines */}
-            {[200, 640, 1060, 1440].map((x, i) => (
-              <line
-                id="canvas-grid-line"
-                key={i}
-                x1={x}
-                y1={40}
-                x2={x}
-                y2={720}
-                stroke="var(--border-color)"
-                strokeDasharray="4 6"
-                strokeWidth="1"
-                strokeOpacity="0.6"
-              />
+            {/* Column Guideline Tracks & Integrated Column Headers (Moves WITH canvas, completely unobstructed) */}
+            {[
+              { label: 'Authors', x: 180, count: entityCounts.Author },
+              { label: 'Papers (Core Hub)', x: 450, count: entityCounts.Paper, isHub: true },
+              { label: 'Institutions', x: 760, count: entityCounts.Institution },
+              { label: 'Topics', x: 950, count: entityCounts.Topic },
+            ].map((col, i) => (
+              <g key={i}>
+                {/* Vertical Column Guideline Track */}
+                <line
+                  id="canvas-grid-line"
+                  x1={col.x}
+                  y1={52}
+                  x2={col.x}
+                  y2={645}
+                  stroke="var(--border-color)"
+                  strokeDasharray="4 6"
+                  strokeWidth="1"
+                  strokeOpacity="0.45"
+                />
+                {/* Column Header Badge */}
+                <rect
+                  x={col.x - (col.isHub ? 78 : 58)}
+                  y={16}
+                  width={col.isHub ? 156 : 116}
+                  height={26}
+                  rx={4}
+                  fill="var(--bg-surface)"
+                  stroke={col.isHub ? 'var(--text-main)' : 'var(--border-color)'}
+                  strokeWidth={col.isHub ? 1.5 : 1}
+                />
+                <text
+                  x={col.x}
+                  y={33}
+                  textAnchor="middle"
+                  fill={col.isHub ? 'var(--text-main)' : 'var(--text-muted)'}
+                  fontSize="10.5"
+                  fontWeight={col.isHub ? '800' : '700'}
+                  letterSpacing="0.05em"
+                >
+                  {col.label} {col.count > 0 ? `(${col.count})` : ''}
+                </text>
+              </g>
             ))}
 
             {/* Links */}
@@ -894,16 +951,16 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               const linkRel = link.relationship || link.type;
               const linkColor = getLinkColor(linkRel);
 
-              // Calculate curve: If nodes are in the same column (e.g. Paper to Paper citation), curve outward
+              // Calculate curve: If nodes are in the same column (e.g. Paper to Paper citation), curve outward to the left
               const dx = targetPos.x - sourcePos.x;
               const dy = targetPos.y - sourcePos.y;
               let pathD = '';
               let midX = 0;
               let midY = 0;
 
-              if (Math.abs(dx) < 60) {
+              if (Math.abs(dx) < 45) {
                 // Same column link: Arc to the left
-                const arcWidth = 65;
+                const arcWidth = 45;
                 const controlX = sourcePos.x - arcWidth;
                 pathD = `M ${sourcePos.x} ${sourcePos.y} C ${controlX} ${sourcePos.y + dy * 0.25}, ${controlX} ${targetPos.y - dy * 0.25}, ${targetPos.x} ${targetPos.y}`;
                 midX = sourcePos.x - arcWidth * 0.75;
@@ -926,7 +983,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                       d={pathD}
                       fill="none"
                       stroke={highlightedStroke}
-                      strokeWidth={7}
+                      strokeWidth={6}
                       strokeOpacity={0.25}
                       strokeLinecap="round"
                     />
@@ -936,19 +993,19 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                   <path
                     d={pathD}
                     fill="none"
-                    stroke={isDirect ? highlightedStroke : isSecondary ? linkColor : linkColor}
-                    strokeWidth={isDirect ? 3.5 : isSecondary ? 1.8 : 1.2}
-                    strokeOpacity={isDirect ? 1.0 : isSecondary ? 0.6 : isFaded ? 0.04 : 0.35}
+                    stroke={isDirect ? highlightedStroke : linkColor}
+                    strokeWidth={isDirect ? 3.2 : isSecondary ? 1.6 : 1.1}
+                    strokeOpacity={isDirect ? 1.0 : isSecondary ? 0.45 : isFaded ? 0.03 : 0.16}
                     strokeLinecap="round"
                   />
 
-                  {/* Relationship Badge Pill (Prominently visible when directly connected) */}
+                  {/* Relationship Badge Pill (Visible when directly connected) */}
                   {isDirect && linkRel && (
                     <g transform={`translate(${midX}, ${midY})`}>
                       <rect
-                        x="-38"
+                        x="-36"
                         y="-10"
-                        width="76"
+                        width="72"
                         height="20"
                         rx="4"
                         fill="var(--bg-surface)"
@@ -971,17 +1028,24 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               );
             })}
 
-            {/* Nodes */}
+            {/* Nodes: Strictly separated text zones to guarantee ZERO text collisions */}
             {visibleNodes.map((node) => {
-              const pos = nodePositions[node.id] || { x: 640, y: 330 };
+              const pos = nodePositions[node.id] || { x: 450, y: 350 };
               const isSelected = selectedNode && selectedNode.id === node.id;
               const isHovered = hoveredNode && hoveredNode.id === node.id;
               const isConnected = activeNode && connectedIds.has(node.id);
               const isFaded = activeNode && !isConnected;
 
               const color = getNodeColor(node.type);
-              const truncatedLabel = node.label.length > 26 ? node.label.substring(0, 24) + '...' : node.label;
-              const isLeftFacing = pos.x > 800;
+
+              // Distinct text orientation to guarantee zero text overlap between adjacent columns:
+              // Authors (180): text points LEFT
+              // Papers (450): text points RIGHT
+              // Institutions (760): text points LEFT
+              // Topics (950): text points RIGHT
+              const isLeftFacing = node.type === 'Author' || node.type === 'Institution';
+              const maxChars = node.type === 'Paper' ? 24 : 20;
+              const truncatedLabel = node.label.length > maxChars ? node.label.substring(0, maxChars - 2) + '...' : node.label;
 
               return (
                 <g
@@ -1003,7 +1067,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                   {/* Glowing focus ring for selected or hovered node */}
                   {(isHovered || isSelected) && (
                     <circle
-                      r="20"
+                      r="18"
                       fill="none"
                       stroke={isLight ? '#0284c7' : '#38bdf8'}
                       strokeWidth="2.5"
@@ -1014,7 +1078,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
                   {/* Outer bezel ring for physical skeuomorphic depth */}
                   <circle
-                    r={node.type === 'Paper' ? 13 : 10}
+                    r={node.type === 'Paper' ? 12 : 9}
                     fill={color}
                     stroke="var(--bg-surface)"
                     strokeWidth="2.5"
@@ -1022,31 +1086,31 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
                   {/* Center core reflection */}
                   <circle
-                    r={node.type === 'Paper' ? 5 : 3.5}
+                    r={node.type === 'Paper' ? 4.5 : 3}
                     fill="#ffffff"
                     opacity={0.85}
                   />
 
                   {/* Dual SVG Text: Protective background halo to ensure 100% legibility in both themes */}
                   <text
-                    x={isLeftFacing ? -16 : 16}
-                    y="4.5"
+                    x={isLeftFacing ? -14 : 14}
+                    y="4"
                     textAnchor={isLeftFacing ? 'end' : 'start'}
                     stroke="var(--graph-bg)"
                     strokeWidth="3.5"
                     strokeLinejoin="round"
                     fill="none"
-                    fontSize={node.type === 'Paper' ? '12.5' : '11.5'}
+                    fontSize={node.type === 'Paper' ? '12' : '11'}
                     fontWeight="700"
                   >
                     {truncatedLabel}
                   </text>
                   <text
-                    x={isLeftFacing ? -16 : 16}
-                    y="4.5"
+                    x={isLeftFacing ? -14 : 14}
+                    y="4"
                     textAnchor={isLeftFacing ? 'end' : 'start'}
                     fill="var(--text-main)"
-                    fontSize={node.type === 'Paper' ? '12.5' : '11.5'}
+                    fontSize={node.type === 'Paper' ? '12' : '11'}
                     fontWeight={isHovered || isSelected ? '700' : '600'}
                   >
                     {truncatedLabel}
@@ -1157,7 +1221,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
             </div>
           </div>
 
-          {/* Interactive Traversal Section: Click any connected entity to jump to it directly! */}
+          {/* Interactive Traversal Section: Click any connected entity to jump to it directly */}
           <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px', marginTop: '10px' }}>
             <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
               Connected Entities (Click to Jump & Traverse):
