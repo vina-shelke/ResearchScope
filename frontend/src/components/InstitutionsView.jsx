@@ -37,11 +37,11 @@ export default function InstitutionsView() {
       </div>
 
       <div className="panel" style={{ marginBottom: '20px', padding: '16px 20px' }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px' }}>
+        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <input 
             type="text" 
             className="search-input" 
-            style={{ flex: 1 }}
+            style={{ flex: '1 1 220px', minWidth: 0 }}
             placeholder="Search university or research institution..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

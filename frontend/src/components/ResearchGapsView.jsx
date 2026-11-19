@@ -77,11 +77,11 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
 
       {/* Topic Query Bar */}
       <div className="panel" style={{ marginBottom: '20px', padding: '16px 20px' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <input
             type="text"
             className="search-input"
-            style={{ fontSize: '13.5px' }}
+            style={{ flex: '1 1 240px', minWidth: 0, fontSize: '13.5px' }}
             placeholder="Enter research topic to discover gaps (e.g., Cybersecurity in Generative AI)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -168,8 +168,8 @@ export default function ResearchGapsView({ onSelectPaper, initialQuery = '' }) {
           </div>
 
           {/* Methodology Distribution & Themes Overview */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-            <div className="panel" style={{ padding: '20px 24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '20px', marginBottom: '24px' }}>
+            <div className="panel" style={{ padding: '20px 24px', minWidth: 0, boxSizing: 'border-box' }}>
               <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
                 Methodology Distribution
               </h3>

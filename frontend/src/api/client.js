@@ -233,6 +233,48 @@ export function getSavedPapersBibTeXUrl(collection = '') {
     : `${API_BASE}/saved-papers/export/bibtex`;
 }
 
+// --- Auth Session & Token Management ---
+export function getStoredAuth() {
+  try {
+    const raw = localStorage.getItem('researchscope_auth');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to parse stored auth session:', e);
+  }
+  return null;
+}
+
+export function setStoredAuth(authData) {
+  try {
+    if (authData) {
+      localStorage.setItem('researchscope_auth', JSON.stringify(authData));
+    } else {
+      localStorage.removeItem('researchscope_auth');
+    }
+  } catch (e) {
+    console.error('Failed to persist auth session:', e);
+  }
+}
+
+export function clearStoredAuth() {
+  try {
+    localStorage.removeItem('researchscope_auth');
+  } catch (e) {
+    console.error('Failed to clear auth session:', e);
+  }
+}
+
+export function getAuthHeaders(customHeaders = {}) {
+  const headers = { 'Content-Type': 'application/json', ...customHeaders };
+  const auth = getStoredAuth();
+  if (auth && (auth.token || auth.user?.id || auth.id)) {
+    const token = auth.token || auth.user?.id || auth.id;
+    headers['X-User-Id'] = token;
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 // --- Auth APIs ---
 export async function loginUser(credentials) {
   const res = await fetch(`${API_BASE}/auth/login`, {
@@ -240,8 +282,13 @@ export async function loginUser(credentials) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials)
   });
-  if (!res.ok) throw new Error('Login failed');
-  return res.json();
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Authentication failed. Please verify your credentials.');
+  }
+  const data = await res.json();
+  setStoredAuth(data);
+  return data;
 }
 
 export async function registerUser(userData) {
@@ -250,14 +297,43 @@ export async function registerUser(userData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData)
   });
-  if (!res.ok) throw new Error('Registration failed');
-  return res.json();
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Registration failed. Please try again.');
+  }
+  const data = await res.json();
+  setStoredAuth(data);
+  return data;
 }
 
 export async function fetchCurrentUser() {
-  const res = await fetch(`${API_BASE}/auth/me`);
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: getAuthHeaders()
+  });
   if (!res.ok) throw new Error('Failed to fetch user session');
   return res.json();
+}
+
+export async function updateUserProfile(profileData) {
+  const res = await fetch(`${API_BASE}/auth/profile`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(profileData)
+  });
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update profile');
+  }
+  const updatedUser = await res.json();
+  const current = getStoredAuth();
+  if (current) {
+    setStoredAuth({ ...current, user: updatedUser });
+  }
+  return updatedUser;
+}
+
+export function logoutUser() {
+  clearStoredAuth();
 }
 
 // --- Feature 1: Research Gap Intelligence ---
@@ -470,3 +546,328 @@ export function getWorkspaceCsvUrl(collection = '', projectId = '') {
   if (projectId) q.set('projectId', projectId);
   return `${API_BASE}/workspace/export/csv?${q.toString()}`;
 }
+
+// --- AI Research Assistant APIs ---
+export async function askAiAssistant(data) {
+  const res = await fetch(`${API_BASE}/ai/ask`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(errText || 'Failed to query AI Research Assistant');
+  }
+  return res.json();
+}
+
+export async function summarizePaperAi(data) {
+  const res = await fetch(`${API_BASE}/ai/summarize`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(errText || 'Failed to generate AI summary');
+  }
+  return res.json();
+}
+
+export async function generateResearchQuestionsAi(data) {
+  const res = await fetch(`${API_BASE}/ai/research-questions`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(errText || 'Failed to generate research questions');
+  }
+  return res.json();
+}
+
+export async function fetchAiSuggestedPrompts() {
+  const res = await fetch(`${API_BASE}/ai/suggested-prompts`);
+  if (!res.ok) throw new Error('Failed to fetch suggested research prompts');
+  return res.json();
+}
+
+// --- Automated Literature Review Generator APIs ---
+export async function generateLiteratureReview(data) {
+  const res = await fetch(`${API_BASE}/literature-reviews/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(errText || 'Failed to generate literature review');
+  }
+  return res.json();
+}
+
+export async function fetchUserLiteratureReviews() {
+  const res = await fetch(`${API_BASE}/literature-reviews`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch user literature reviews');
+  return res.json();
+}
+
+export async function fetchLiteratureReviewById(id) {
+  const res = await fetch(`${API_BASE}/literature-reviews/${encodeURIComponent(id)}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch literature review record');
+  return res.json();
+}
+
+export async function updateLiteratureReviewSection(reviewId, sectionKey, content) {
+  const res = await fetch(`${API_BASE}/literature-reviews/${encodeURIComponent(reviewId)}/sections/${encodeURIComponent(sectionKey)}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ content })
+  });
+  if (!res.ok) throw new Error('Failed to update literature review section');
+  return res.json();
+}
+
+export async function regenerateLiteratureReviewSection(reviewId, sectionKey, instructions = '') {
+  const res = await fetch(`${API_BASE}/literature-reviews/${encodeURIComponent(reviewId)}/sections/${encodeURIComponent(sectionKey)}/regenerate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ instructions })
+  });
+  if (!res.ok) throw new Error('Failed to regenerate literature review section');
+  return res.json();
+}
+
+export async function deleteLiteratureReview(id) {
+  const res = await fetch(`${API_BASE}/literature-reviews/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to delete literature review');
+  return res.json();
+}
+
+export function getLiteratureReviewExportUrl(id, format = 'latex') {
+  return `${API_BASE}/literature-reviews/${encodeURIComponent(id)}/export/${encodeURIComponent(format)}`;
+}
+
+// --- Research Methodology Analyzer APIs ---
+export async function analyzeMethodology(paperIds = []) {
+  const res = await fetch(`${API_BASE}/methodology/analyze`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ paperIds })
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(errText || 'Failed to analyze methodology');
+  }
+  return res.json();
+}
+
+export async function updateMethodologyField(paperId, fieldName, correctedValue) {
+  const res = await fetch(`${API_BASE}/methodology/${encodeURIComponent(paperId)}/field`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ fieldName, correctedValue })
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(errText || 'Failed to update methodology field');
+  }
+  return res.json();
+}
+
+export function getMethodologyCsvUrl(paperIds = []) {
+  const query = paperIds && paperIds.length > 0 ? `?paperIds=${paperIds.map(encodeURIComponent).join(',')}` : '';
+  return `${API_BASE}/methodology/export/csv${query}`;
+}
+
+// --- Research Collaboration & Shared Workspace APIs ---
+export async function fetchUserTeams() {
+  const res = await fetch(`${API_BASE}/teams`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch research teams');
+  return res.json();
+}
+
+export async function createResearchTeam(data) {
+  const res = await fetch(`${API_BASE}/teams`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(err || 'Failed to create research team');
+  }
+  return res.json();
+}
+
+export async function fetchTeamDetails(teamId) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch team details');
+  return res.json();
+}
+
+export async function updateResearchTeam(teamId, data) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Failed to update research team');
+  return res.json();
+}
+
+export async function deleteResearchTeam(teamId) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to delete research team');
+  return res.json();
+}
+
+export async function addTeamMember(teamId, data) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/members`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(err || 'Failed to add team member');
+  }
+  return res.json();
+}
+
+export async function updateTeamMemberRole(teamId, memberId, role) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}/role`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ role })
+  });
+  if (!res.ok) throw new Error('Failed to update member role');
+  return res.json();
+}
+
+export async function removeTeamMember(teamId, memberId) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to remove team member');
+  return res.json();
+}
+
+export async function addTeamPaper(teamId, data) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/papers`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(err || 'Failed to add paper to team');
+  }
+  return res.json();
+}
+
+export async function updateTeamPaperAssignment(teamId, teamPaperId, data) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/papers/${encodeURIComponent(teamPaperId)}/assignment`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Failed to update paper assignment');
+  return res.json();
+}
+
+export async function removeTeamPaper(teamId, teamPaperId) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/papers/${encodeURIComponent(teamPaperId)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to remove paper from team');
+  return res.json();
+}
+
+export async function fetchTeamPaperComments(teamId, paperId) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/papers/${encodeURIComponent(paperId)}/comments`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch team comments');
+  return res.json();
+}
+
+export async function addTeamPaperComment(teamId, paperId, data) {
+  const res = await fetch(`${API_BASE}/teams/${encodeURIComponent(teamId)}/papers/${encodeURIComponent(paperId)}/comments`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Failed to add team comment');
+  return res.json();
+}
+
+export function getTeamMatrixCsvUrl(teamId) {
+  return `${API_BASE}/teams/${encodeURIComponent(teamId)}/export/csv`;
+}
+
+// --- Smart Recommendations & Alerts APIs ---
+export async function fetchPersonalizedRecommendations(limit = 10) {
+  const res = await fetch(`${API_BASE}/recommendations/personalized?limit=${encodeURIComponent(limit)}`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch recommendations');
+  return res.json();
+}
+
+export async function fetchUserAlerts() {
+  const res = await fetch(`${API_BASE}/alerts/subscriptions`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch alert subscriptions');
+  return res.json();
+}
+
+export async function subscribeAlert(data) {
+  const res = await fetch(`${API_BASE}/alerts/subscriptions`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(err || 'Failed to subscribe to alert');
+  }
+  return res.json();
+}
+
+export async function deleteAlert(alertId) {
+  const res = await fetch(`${API_BASE}/alerts/subscriptions/${encodeURIComponent(alertId)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to remove alert');
+  return res.json();
+}
+
+export async function fetchAlertNotifications() {
+  const res = await fetch(`${API_BASE}/alerts/notifications`, {
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to fetch alert notifications');
+  return res.json();
+}
+
+

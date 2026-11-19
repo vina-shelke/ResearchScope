@@ -7,9 +7,10 @@ import {
   getPaperBibTeXUrl,
   getPaperRisUrl 
 } from '../api/client';
-import { IconExternalLink, IconAlert } from './Icons';
+import { IconExternalLink, IconAlert, IconSparkles } from './Icons';
+import CitationModal, { generateCOinS } from './CitationModal';
 
-export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddToCompare, comparisonIds = [] }) {
+export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddToCompare, comparisonIds = [], onAskAi }) {
   if (!paper) return null;
 
   const [isSaved, setIsSaved] = useState(Boolean(paper.isSaved));
@@ -21,6 +22,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
   const [loadingRefs, setLoadingRefs] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
+  const [showCiteModal, setShowCiteModal] = useState(false);
 
   useEffect(() => {
     setIsSaved(Boolean(paper.isSaved));
@@ -91,9 +93,16 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
 
   const inCompare = comparisonIds.includes(String(paper.id));
 
+  // Compute scholarly citation velocity (citations accrued per academic year)
+  const currentYear = new Date().getFullYear();
+  const yearsElapsed = Math.max(1, currentYear - (paper.publicationYear || currentYear));
+  const citationVelocity = Math.round((paper.citationCount || 0) / yearsElapsed);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '880px', maxHeight: '90vh' }}>
+        {/* Hidden OpenURL COinS metadata tag for automatic Zotero & Mendeley browser extension detection */}
+        <span className="Z3988" title={generateCOinS(paper)} style={{ display: 'none' }} />
         <div className="modal-header">
           <div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
@@ -156,7 +165,7 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
               <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-main)' }}>
                 Add to Research Library
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Collection</label>
                   <input
@@ -251,6 +260,12 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
             <div>
               <div className="detail-label">Citation Count</div>
               <div style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '16px' }}>{paper.citationCount ?? 0}</div>
+            </div>
+            <div>
+              <div className="detail-label">Citation Velocity</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '14px' }}>
+                <strong>{citationVelocity}</strong> / yr
+              </div>
             </div>
             {paper.doi && (
               <div>
@@ -452,6 +467,30 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
               </button>
             )}
 
+            {/* 1-Click Academic Cite Dialog (APA, MLA, Chicago, IEEE, Harvard, BibTeX) */}
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowCiteModal(true)}
+              style={{ fontWeight: 600 }}
+              title="Generate formatted academic citation"
+            >
+              Cite
+            </button>
+
+            {onAskAi && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => onAskAi(paper)}
+                style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                title="Ask questions, summarize, or extract limitations with AI Assistant"
+              >
+                <IconSparkles size={13} />
+                <span>Ask AI</span>
+              </button>
+            )}
+
             <a 
               href={getPaperBibTeXUrl(paper.id)}
               download={`paper-${paper.id}.bib`}
@@ -487,6 +526,11 @@ export default function PaperDetailModal({ paper, onClose, onSelectPaper, onAddT
           <button className="btn btn-secondary btn-sm" onClick={onClose}>Close Record</button>
         </div>
       </div>
+
+      {/* Formatted Citation Generator Modal */}
+      {showCiteModal && (
+        <CitationModal paper={paper} onClose={() => setShowCiteModal(false)} />
+      )}
     </div>
   );
 }

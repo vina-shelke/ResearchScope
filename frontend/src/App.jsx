@@ -11,8 +11,12 @@ import InstitutionsView from './components/InstitutionsView';
 import TopicsView from './components/TopicsView';
 import CitationsView from './components/CitationsView';
 import SavedPapersView from './components/SavedPapersView';
+import AiAssistantView from './components/AiAssistantView';
 import PaperDetailModal from './components/PaperDetailModal';
-import { fetchLandscape, fetchPaperById } from './api/client';
+import CitationModal from './components/CitationModal';
+import CommandPalette from './components/CommandPalette';
+import AuthModal from './components/AuthModal';
+import { fetchLandscape, fetchPaperById, getStoredAuth, fetchCurrentUser, logoutUser } from './api/client';
 import { useToast } from './components/Toast';
 
 export default function App() {
@@ -37,6 +41,54 @@ export default function App() {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [selectedPaper, setSelectedPaper] = useState(null);
   const [currentQuery, setCurrentQuery] = useState(initialUrlState.query);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [citePaper, setCitePaper] = useState(null);
+  const [aiTargetPaper, setAiTargetPaper] = useState(null);
+
+  // Authenticated User & Scholarly Profile State
+  const [currentUser, setCurrentUser] = useState(() => {
+    const auth = getStoredAuth();
+    return auth?.user || auth || null;
+  });
+  const [authModalState, setAuthModalState] = useState({ isOpen: false, mode: 'login' });
+
+  // Load existing session or default researcher on mount if not in storage
+  useEffect(() => {
+    if (!currentUser) {
+      fetchCurrentUser()
+        .then(user => {
+          if (user) setCurrentUser(user);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleOpenAuthModal = (mode = 'login') => {
+    setAuthModalState({ isOpen: true, mode });
+  };
+
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    setAuthModalState({ isOpen: false, mode: 'login' });
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    toast.info('You have signed out of your research workspace.');
+  };
+
+  // Global Scholarly Hotkeys: ⌘K / Ctrl+K opens Command Palette
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Sync state to URL without reloading
   useEffect(() => {
@@ -185,6 +237,10 @@ export default function App() {
         comparisonCount={comparisonIds.length}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        currentUser={currentUser}
+        onOpenAuthModal={handleOpenAuthModal}
+        onLogout={handleLogout}
       />
 
       <main className="main-content">
@@ -197,6 +253,7 @@ export default function App() {
             onSelectTopic={() => setActiveTab('topics')}
             onSearch={handleGlobalSearch}
             onAddToCompare={handleToggleCompare}
+            onOpenCite={(paper) => setCitePaper(paper)}
           />
         )}
 
@@ -206,6 +263,7 @@ export default function App() {
             onSelectPaper={handleSelectPaper} 
             onAddToCompare={handleToggleCompare}
             comparisonIds={comparisonIds}
+            onOpenCite={(paper) => setCitePaper(paper)}
           />
         )}
 
@@ -221,6 +279,7 @@ export default function App() {
           <ConnectionsView 
             onSelectPaper={handleSelectPaper} 
             onAddToCompare={handleToggleCompare}
+            onOpenCite={(paper) => setCitePaper(paper)}
           />
         )}
 
@@ -238,6 +297,24 @@ export default function App() {
         {activeTab === 'workspace' && (
           <WorkspaceView 
             onSelectPaper={handleSelectPaper} 
+            onOpenAuthModal={handleOpenAuthModal}
+            currentUser={currentUser}
+            setActiveTab={setActiveTab}
+            onRunSearch={handleGlobalSearch}
+            onLoadComparison={(ids) => {
+              setComparisonIds(ids);
+              setActiveTab('comparison');
+            }}
+            onOpenCite={(paper) => setCitePaper(paper)}
+          />
+        )}
+
+        {/* 7. AI Research Assistant (Grounded RAG & Source Verification) */}
+        {activeTab === 'ai' && (
+          <AiAssistantView 
+            onSelectPaper={handleSelectPaper} 
+            initialPaper={aiTargetPaper}
+            setActiveTab={setActiveTab}
           />
         )}
 
@@ -294,6 +371,44 @@ export default function App() {
         onSelectPaper={handleSelectPaper}
         onAddToCompare={handleToggleCompare}
         comparisonIds={comparisonIds}
+        onOpenCite={(paper) => setCitePaper(paper)}
+        onAskAi={(paper) => {
+          setAiTargetPaper(paper);
+          setSelectedPaper(null);
+          setActiveTab('ai');
+        }}
+      />
+
+      {/* 1-Click Multi-Format Citation Modal (APA, MLA, Chicago, IEEE, Harvard, BibTeX, COinS) */}
+      <CitationModal
+        paper={citePaper}
+        isOpen={Boolean(citePaper)}
+        onClose={() => setCitePaper(null)}
+      />
+
+      {/* Global Scholarly Command Palette (⌘K / Ctrl+K) */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigateTab={(tab) => {
+          setActiveTab(tab);
+          setCommandPaletteOpen(false);
+        }}
+        onSelectPaper={(paperId) => {
+          handleSelectPaper(paperId);
+          setCommandPaletteOpen(false);
+        }}
+        onToggleTheme={handleToggleTheme}
+        currentTheme={theme}
+      />
+
+      {/* User Login, Sign Up & Scholarly Onboarding Modal */}
+      <AuthModal
+        isOpen={authModalState.isOpen}
+        initialMode={authModalState.mode}
+        onClose={() => setAuthModalState(prev => ({ ...prev, isOpen: false }))}
+        onAuthSuccess={handleAuthSuccess}
+        currentUser={currentUser}
       />
     </div>
   );

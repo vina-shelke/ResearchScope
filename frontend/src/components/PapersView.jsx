@@ -11,8 +11,9 @@ import {
 } from '../api/client';
 import { IconBookmark, IconSparkles, IconDownload } from './Icons';
 import { SkeletonTableRow } from './SkeletonLoader';
+import { generateCOinS } from './CitationModal';
 
-export default function PapersView({ onSelectPaper, onAddToCompare, comparisonIds = [] }) {
+export default function PapersView({ onSelectPaper, onAddToCompare, comparisonIds = [], onOpenCite }) {
   const [searchMode, setSearchMode] = useState('standard'); // 'standard' or 'semantic'
   const [papersData, setPapersData] = useState(null);
   const [semanticResults, setSemanticResults] = useState(null);
@@ -197,8 +198,8 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
       {/* Filter / Search Panel */}
       <div className="panel" style={{ marginBottom: '20px', padding: '20px 24px' }}>
         {searchMode === 'semantic' ? (
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 280px', minWidth: 0 }}>
               <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '4px' }}>
                 Natural Language Research Query or Problem Statement
               </label>
@@ -211,12 +212,12 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                 onChange={(e) => setSemanticQuery(e.target.value)}
               />
             </div>
-            <button type="submit" className="btn btn-primary" style={{ height: '42px', marginTop: '22px' }}>
+            <button type="submit" className="btn btn-primary" style={{ height: '42px', marginTop: '18px' }}>
               Semantic Search
             </button>
           </form>
         ) : (
-          <form onSubmit={handleSearchSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', alignItems: 'end' }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '12px', alignItems: 'end' }}>
             <div>
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Keyword / Title</label>
               <input 
@@ -419,6 +420,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                           </span>
                         </td>
                         <td style={{ maxWidth: '360px' }}>
+                          <span className="Z3988" title={generateCOinS(p)} style={{ display: 'none' }} />
                           <div className="table-link" onClick={() => onSelectPaper(p.id)} style={{ fontSize: '14px', marginBottom: '4px' }}>
                             {p.title}
                           </div>
@@ -428,7 +430,17 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                         </td>
                         <td>{p.publicationYear || 'N/A'}</td>
                         <td style={{ fontSize: '12px' }}>{p.venue || 'N/A'}</td>
-                        <td style={{ fontWeight: 700 }}>{p.citationCount || 0}</td>
+                        <td style={{ minWidth: '90px' }}>
+                          <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{p.citationCount || 0}</div>
+                          {p.citationCount > 0 && (
+                            <div 
+                              style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginTop: '2px' }}
+                              title="Citation velocity: Average citations per year"
+                            >
+                              {Math.round((p.citationCount || 0) / Math.max(1, new Date().getFullYear() - (p.publicationYear || new Date().getFullYear())))}/yr
+                            </div>
+                          )}
+                        </td>
                         <td>
                           {p.isOpenAccess ? (
                             <span className="tag tag-success">OA</span>
@@ -437,10 +449,19 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                           )}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: '6px' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <button className="btn btn-secondary btn-sm" onClick={() => onSelectPaper(p.id)}>
                               Inspect
                             </button>
+                            {onOpenCite && (
+                              <button 
+                                className="btn btn-secondary btn-sm" 
+                                onClick={() => onOpenCite(p)}
+                                title="Format citation (APA, MLA, Chicago, IEEE, Harvard, BibTeX)"
+                              >
+                                Cite
+                              </button>
+                            )}
                             {onAddToCompare && (
                               <button
                                 className={`btn btn-sm ${inCompare ? 'btn-primary' : 'btn-secondary'}`}
@@ -509,6 +530,7 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                         </button>
                       </td>
                       <td style={{ maxWidth: '360px' }}>
+                        <span className="Z3988" title={generateCOinS(p)} style={{ display: 'none' }} />
                         <div className="table-link" onClick={() => onSelectPaper(p.id)} style={{ fontSize: '14px', marginBottom: '4px' }}>
                           {p.title}
                         </div>
@@ -518,7 +540,17 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                       </td>
                       <td>{p.publicationYear || 'N/A'}</td>
                       <td style={{ fontSize: '12px' }}>{p.venue || 'N/A'}</td>
-                      <td style={{ fontWeight: 700 }}>{p.citationCount || 0}</td>
+                      <td style={{ minWidth: '90px' }}>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{p.citationCount || 0}</div>
+                        {p.citationCount > 0 && (
+                          <div 
+                            style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginTop: '2px' }}
+                            title="Citation velocity: Average citations per year"
+                          >
+                            {Math.round((p.citationCount || 0) / Math.max(1, new Date().getFullYear() - (p.publicationYear || new Date().getFullYear())))}/yr
+                          </div>
+                        )}
+                      </td>
                       <td>
                         {p.isOpenAccess ? (
                           <span className="tag tag-success">
@@ -535,10 +567,19 @@ export default function PapersView({ onSelectPaper, onAddToCompare, comparisonId
                       </td>
                       <td><span className="tag tag-accent">{p.source}</span></td>
                       <td>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                           <button className="btn btn-secondary btn-sm" onClick={() => onSelectPaper(p.id)}>
                             Inspect
                           </button>
+                          {onOpenCite && (
+                            <button 
+                              className="btn btn-secondary btn-sm" 
+                              onClick={() => onOpenCite(p)}
+                              title="Format citation (APA, MLA, Chicago, IEEE, Harvard, BibTeX)"
+                            >
+                              Cite
+                            </button>
+                          )}
                           {onAddToCompare && (
                             <button 
                               className={`btn btn-sm ${inCompare ? 'btn-primary' : 'btn-secondary'}`}

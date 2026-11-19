@@ -3,10 +3,10 @@ import { fetchResearchGraph, fetchResearchGraphFiltered, fetchGraphExpanded } fr
 import { IconInfo, IconSearch } from './Icons';
 
 // Viewport layout dimensions: Clean academic diagram coordinate space
-const CANVAS_WIDTH = 1140;
+const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 680;
 
-export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
+export default function ConnectionsView({ onSelectPaper, onAddToCompare, onOpenCite }) {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [expanding, setExpanding] = useState(false);
@@ -14,6 +14,8 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
   const [selectedNode, setSelectedNode] = useState(null);
   const [filterType, setFilterType] = useState('ALL'); // ALL, Paper, Author, Institution, Topic
   const [densityMode, setDensityMode] = useState('focused'); // 'focused' (clean, spaced, non-colliding) vs 'all'
+  const [layoutMode, setLayoutMode] = useState('flow'); // 'flow' (Bipartite Scholarly Swimlanes) vs 'radial' (Ego-Network Hub)
+  const [edgeClarity, setEdgeClarity] = useState('focused'); // 'focused' (dynamic high-signal) vs 'all' (all lines)
   const [activeRelations, setActiveRelations] = useState({
     WROTE: true,
     HAS_TOPIC: true,
@@ -125,9 +127,10 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
     // In 'focused' mode: Prioritize top-connected entities with generous vertical breathing room
     if (densityMode === 'focused') {
-      selectedAuthors = sortByDegree(allAuthors).slice(0, 14);
+      selectedAuthors = sortByDegree(allAuthors).slice(0, 12);
+      selectedPapers = allPapers.slice(0, 12);
       selectedInstitutions = sortByDegree(allInstitutions).slice(0, 8);
-      selectedTopics = sortByDegree(allTopics).slice(0, 14);
+      selectedTopics = sortByDegree(allTopics).slice(0, 12);
     }
 
     // Apply entity type filter if specified
@@ -154,12 +157,17 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     return { visibleNodes: nodes, visibleLinks: links, entityCounts };
   }, [graphData, filterType, activeRelations, densityMode]);
 
-  // 2. Structured Layout Engine: Positions ONLY Visible Nodes with Guaranteed Non-Colliding Text Zones
-  // Zone 1: Authors (x = 180, text points LEFT <-)
-  // Zone 2: Papers Core Hub (x = 450, text points RIGHT ->)
-  // Zone 3: Institutions (x = 760, text points LEFT <-)
-  // Zone 4: Topics (x = 950, text points RIGHT ->)
-  const layoutNodes = useCallback((nodes) => {
+  // 2. Structured Layout Engine: Guaranteed Non-Colliding Corridors & Dual Perspectives
+  // Perspective A: Bipartite Scholarly Swimlanes (Flow)
+  //   - Authors: x = 160 (Text points LEFT <- into left margin)
+  //   - Papers Core Hub: x = 440 (Text points LEFT <- into empty corridor between Authors & Papers)
+  //   - Pristine Link Corridor: x = 440 to 760 (320px completely empty of text for clean curved edges)
+  //   - Institutions: x = 760 (Text points RIGHT -> into space between Institutions & Topics)
+  //   - Topics: x = 980 (Text points RIGHT -> into right margin)
+  // Perspective B: Radial Ego-Network Orbit (Radial Hub)
+  //   - Center: Focused Paper seed at (600, 340)
+  //   - Concentric orbits for direct co-authors (R=160), institutions (R=260), topics (R=340)
+  const layoutNodes = useCallback((nodes, curLayoutMode = layoutMode, anchorNode = selectedNode) => {
     if (!nodes || nodes.length === 0) return {};
 
     const authors = nodes.filter(n => n.type === 'Author');
@@ -167,29 +175,85 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     const institutions = nodes.filter(n => n.type === 'Institution');
     const topics = nodes.filter(n => n.type === 'Topic');
 
-    const paddingY = 85;
-    const maxY = 625;
-    const availableHeight = maxY - paddingY; // 540px vertical room
     const positions = {};
+
+    // PERSPECTIVE B: RADIAL EGO-NETWORK
+    if (curLayoutMode === 'radial') {
+      const seed = anchorNode || papers[0] || nodes[0];
+      const centerX = 600;
+      const centerY = 340;
+      positions[seed.id] = { x: centerX, y: centerY };
+
+      // Other papers (citations): arc on bottom-left
+      const otherPapers = papers.filter(p => p.id !== seed.id);
+      otherPapers.forEach((p, idx) => {
+        const angle = Math.PI * 0.75 + (idx - (otherPapers.length - 1) / 2) * 0.28;
+        positions[p.id] = {
+          x: Math.round(centerX + 260 * Math.cos(angle)),
+          y: Math.round(centerY + 260 * Math.sin(angle))
+        };
+      });
+
+      // Authors: arc on left side (angles from 110 deg to 250 deg)
+      const authorRadius = 160;
+      const authorStep = authors.length <= 1 ? 0 : (Math.PI * 0.85) / Math.max(1, authors.length - 1);
+      authors.forEach((a, idx) => {
+        const angle = Math.PI * 0.58 + idx * authorStep;
+        positions[a.id] = {
+          x: Math.round(centerX - authorRadius * Math.sin(angle)),
+          y: Math.round(centerY + authorRadius * Math.cos(angle))
+        };
+      });
+
+      // Institutions: arc on upper right (angles from -50 deg to 40 deg)
+      const instRadius = 260;
+      const instStep = institutions.length <= 1 ? 0 : (Math.PI * 0.5) / Math.max(1, institutions.length - 1);
+      institutions.forEach((inst, idx) => {
+        const angle = -Math.PI * 0.28 + idx * instStep;
+        positions[inst.id] = {
+          x: Math.round(centerX + instRadius * Math.cos(angle)),
+          y: Math.round(centerY + instRadius * Math.sin(angle))
+        };
+      });
+
+      // Topics: arc on lower right (angles from 20 deg to 120 deg)
+      const topicRadius = 340;
+      const topicStep = topics.length <= 1 ? 0 : (Math.PI * 0.6) / Math.max(1, topics.length - 1);
+      topics.forEach((t, idx) => {
+        const angle = Math.PI * 0.1 + idx * topicStep;
+        positions[t.id] = {
+          x: Math.round(centerX + topicRadius * Math.cos(angle)),
+          y: Math.round(centerY + topicRadius * Math.sin(angle))
+        };
+      });
+
+      return positions;
+    }
+
+    // PERSPECTIVE A: BIPARTITE SCHOLARLY SWIMLANES (DEFAULT)
+    const paddingY = 85;
+    const maxItems = Math.max(authors.length, papers.length, institutions.length, topics.length, 12);
+    const minStepY = 42; // Guaranteed 42px vertical step prevents any text overlap
+    const computedHeight = Math.max(CANVAS_HEIGHT - paddingY * 2, (maxItems - 1) * minStepY);
 
     const placeColumn = (items, centerX) => {
       if (items.length === 0) return;
-      const stepY = items.length <= 1 ? 0 : availableHeight / (items.length - 1);
+      const stepY = items.length <= 1 ? 0 : Math.max(minStepY, computedHeight / (items.length - 1));
       items.forEach((item, idx) => {
         positions[item.id] = {
           x: centerX,
-          y: items.length === 1 ? 350 : Math.round(paddingY + idx * stepY)
+          y: items.length === 1 ? 340 : Math.round(paddingY + idx * stepY)
         };
       });
     };
 
-    placeColumn(authors, 180);
-    placeColumn(papers, 450);
+    placeColumn(authors, 160);
+    placeColumn(papers, 440);
     placeColumn(institutions, 760);
-    placeColumn(topics, 950);
+    placeColumn(topics, 980);
 
     return positions;
-  }, []);
+  }, [layoutMode, selectedNode]);
 
   // Centering & Fitting: Centers the canvas cleanly inside the container
   const fitPositionsToView = useCallback(() => {
@@ -241,14 +305,16 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     loadGraph();
   }, [nodeLimit]);
 
-  // Re-calculate layout positions whenever visible nodes change
+  // Re-calculate layout positions whenever visible nodes, layout perspective, or selected focus changes
   useEffect(() => {
     if (visibleNodes.length > 0) {
-      const positions = layoutNodes(visibleNodes);
+      const positions = layoutNodes(visibleNodes, layoutMode, selectedNode);
       setNodePositions(positions);
-      fitPositionsToView();
+      if (layoutMode === 'flow') {
+        fitPositionsToView();
+      }
     }
-  }, [visibleNodes, layoutNodes, fitPositionsToView]);
+  }, [visibleNodes, layoutMode, selectedNode, layoutNodes, fitPositionsToView]);
 
   // Toggle relation type filter
   const toggleRelation = (type) => {
@@ -488,6 +554,71 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
     }
   };
 
+  // Publication-Ready Vector SVG Export
+  const handleExportSvg = () => {
+    if (!svgRef.current) return;
+    try {
+      const svgClone = svgRef.current.cloneNode(true);
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const bgRect = svgClone.querySelector('#canvas-bg');
+      if (bgRect) {
+        bgRect.setAttribute('fill', isLight ? '#f8f8fa' : '#0b0b0d');
+      }
+
+      const svgData = new XMLSerializer().serializeToString(svgClone);
+      const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `research-knowledge-graph-${new Date().toISOString().slice(0, 10)}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      console.error('Failed to export SVG graph:', err);
+    }
+  };
+
+  // High-Resolution 300 DPI PNG Export for Slides & Presentations
+  const handleExportPng = () => {
+    if (!svgRef.current) return;
+    try {
+      const svgClone = svgRef.current.cloneNode(true);
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const bgRect = svgClone.querySelector('#canvas-bg');
+      if (bgRect) {
+        bgRect.setAttribute('fill', isLight ? '#f8f8fa' : '#0b0b0d');
+      }
+
+      const svgData = new XMLSerializer().serializeToString(svgClone);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const URL_ = window.URL || window.webkitURL || window;
+      const blobURL = URL_.createObjectURL(svgBlob);
+
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = CANVAS_WIDTH * 2;
+        canvas.height = CANVAS_HEIGHT * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(2, 2);
+        ctx.drawImage(image, 0, 0);
+
+        const pngUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = `research-knowledge-graph-${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL_.revokeObjectURL(blobURL);
+      };
+      image.src = blobURL;
+    } catch (err) {
+      console.error('Failed to export PNG graph:', err);
+    }
+  };
+
   // Reset View: Fits graph centered in viewport
   const resetView = () => {
     const positions = layoutNodes(visibleNodes);
@@ -524,14 +655,29 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           </div>
         </div>
 
-        {/* View Controls */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {/* View Controls & Publication Export */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button className="btn btn-secondary btn-sm" onClick={() => handleZoomStep(1.15)} title="Zoom In">+</button>
           <button className="btn btn-secondary btn-sm" onClick={() => handleZoomStep(0.85)} title="Zoom Out">−</button>
           <button className="btn btn-secondary btn-sm" onClick={resetView} title="Reset view and fit graph">Fit View</button>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', minWidth: '42px', textAlign: 'right' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', minWidth: '38px', textAlign: 'right' }}>
             {Math.round(zoom * 100)}%
           </span>
+          <div style={{ width: '1px', height: '18px', backgroundColor: 'var(--border-color)', margin: '0 4px' }} />
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={handleExportSvg}
+            title="Export standalone Vector SVG for Overleaf, LaTeX, and posters"
+          >
+            Export SVG
+          </button>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={handleExportPng}
+            title="Export 300 DPI high-resolution PNG snapshot"
+          >
+            Export PNG
+          </button>
         </div>
       </div>
 
@@ -539,19 +685,40 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
       <div className="panel" style={{ marginBottom: '16px', padding: '14px 18px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           
-          {/* Top row: Density Switch, Entity Filters, Graph Depth & Instant Search */}
+          {/* Top row: Layout Mode, Density, Edge Clarity, Entity Filters, Graph Depth & Instant Search */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
               
+              {/* Layout Mode Selector (Swimlanes vs Radial Orbit) */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '14px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Perspective:
+                </span>
+                <button
+                  className={`btn btn-sm ${layoutMode === 'flow' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setLayoutMode('flow')}
+                  title="Structured 4-Column Scholarly Swimlanes with guaranteed zero text collisions"
+                >
+                  Swimlanes (Flow)
+                </button>
+                <button
+                  className={`btn btn-sm ${layoutMode === 'radial' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setLayoutMode('radial')}
+                  title="Ego-Network: Concentric orbital rings centered around selected paper (Connected Papers style)"
+                >
+                  Radial Orbit
+                </button>
+              </div>
+
               {/* Density Mode Selector (Focused vs All) */}
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '14px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Layout:
+                  Density:
                 </span>
                 <button
                   className={`btn btn-sm ${densityMode === 'focused' ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => setDensityMode('focused')}
-                  title="Clean high-signal layout with generous vertical spacing and zero label collisions"
+                  title="High-signal layout: Top connected entities with generous vertical breathing room"
                 >
                   Focused (Clean)
                 </button>
@@ -561,6 +728,27 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                   title="Display all indexed entities"
                 >
                   All ({graphData.nodes?.length || 0})
+                </button>
+              </div>
+
+              {/* Edge Clarity Selector */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '14px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Edges:
+                </span>
+                <button
+                  className={`btn btn-sm ${edgeClarity === 'focused' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setEdgeClarity('focused')}
+                  title="Dynamic Focus: Highlights active connections with high-contrast Sky Blue and relationship badges, fading background clutter"
+                >
+                  Dynamic Focus
+                </button>
+                <button
+                  className={`btn btn-sm ${edgeClarity === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setEdgeClarity('all')}
+                  title="Display all relationship edges"
+                >
+                  All Links
                 </button>
               </div>
 
@@ -891,12 +1079,12 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
           <rect id="canvas-bg" width="100%" height="100%" fill="transparent" />
 
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {/* Column Guideline Tracks & Integrated Column Headers (Moves WITH canvas, completely unobstructed) */}
-            {[
-              { label: 'Authors', x: 180, count: entityCounts.Author },
-              { label: 'Papers (Core Hub)', x: 450, count: entityCounts.Paper, isHub: true },
+            {/* Perspective A: Swimlane Guideline Tracks & Integrated Column Headers */}
+            {layoutMode === 'flow' && [
+              { label: 'Authors', x: 160, count: entityCounts.Author },
+              { label: 'Papers (Core Hub)', x: 440, count: entityCounts.Paper, isHub: true },
               { label: 'Institutions', x: 760, count: entityCounts.Institution },
-              { label: 'Topics', x: 950, count: entityCounts.Topic },
+              { label: 'Topics', x: 980, count: entityCounts.Topic },
             ].map((col, i) => (
               <g key={i}>
                 {/* Vertical Column Guideline Track */}
@@ -936,7 +1124,21 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               </g>
             ))}
 
-            {/* Links */}
+            {/* Perspective B: Radial Orbit Rings & Concentric Labels */}
+            {layoutMode === 'radial' && (
+              <g>
+                <circle cx={600} cy={340} r={160} fill="none" stroke="var(--border-color)" strokeDasharray="5 5" strokeWidth="1" strokeOpacity="0.5" />
+                <text x={600} y={175} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="700" letterSpacing="0.06em">AUTHORS ORBIT</text>
+
+                <circle cx={600} cy={340} r={260} fill="none" stroke="var(--border-color)" strokeDasharray="5 5" strokeWidth="1" strokeOpacity="0.4" />
+                <text x={600} y={75} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="700" letterSpacing="0.06em">AFFILIATIONS & CITATIONS</text>
+
+                <circle cx={600} cy={340} r={340} fill="none" stroke="var(--border-color)" strokeDasharray="5 5" strokeWidth="1" strokeOpacity="0.3" />
+                <text x={600} y={-5} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="700" letterSpacing="0.06em">TOPIC TAXONOMY</text>
+              </g>
+            )}
+
+            {/* Links with High-Signal Dynamic Focus (Eliminates Hairball Congestion) */}
             {visibleLinks.map((link, idx) => {
               const sourcePos = nodePositions[link.source];
               const targetPos = nodePositions[link.target];
@@ -958,7 +1160,12 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
               let midX = 0;
               let midY = 0;
 
-              if (Math.abs(dx) < 45) {
+              if (layoutMode === 'radial') {
+                // Radial curves arc cleanly through center
+                midX = (sourcePos.x + targetPos.x) / 2;
+                midY = (sourcePos.y + targetPos.y) / 2;
+                pathD = `M ${sourcePos.x} ${sourcePos.y} Q ${600} ${340} ${targetPos.x} ${targetPos.y}`;
+              } else if (Math.abs(dx) < 45) {
                 // Same column link: Arc to the left
                 const arcWidth = 45;
                 const controlX = sourcePos.x - arcWidth;
@@ -966,7 +1173,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                 midX = sourcePos.x - arcWidth * 0.75;
                 midY = (sourcePos.y + targetPos.y) / 2;
               } else {
-                // Cross-column link: Smooth S-curve
+                // Cross-column link: Smooth S-curve traversing pristine corridor
                 midX = (sourcePos.x + targetPos.x) / 2;
                 midY = (sourcePos.y + targetPos.y) / 2;
                 pathD = `M ${sourcePos.x} ${sourcePos.y} C ${midX} ${sourcePos.y}, ${midX} ${targetPos.y}, ${targetPos.x} ${targetPos.y}`;
@@ -974,6 +1181,9 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
               // Prominent highlight colors: Sky Blue / Royal Blue
               const highlightedStroke = isLight ? '#0284c7' : '#38bdf8';
+              const effectiveOpacity = edgeClarity === 'focused'
+                ? (activeNode ? (isDirect ? 1.0 : isSecondary ? 0.35 : 0.02) : 0.08)
+                : (activeNode ? (isDirect ? 1.0 : isSecondary ? 0.45 : 0.03) : 0.16);
 
               return (
                 <g key={`${link.source}-${link.target}-${idx}`}>
@@ -994,8 +1204,8 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
                     d={pathD}
                     fill="none"
                     stroke={isDirect ? highlightedStroke : linkColor}
-                    strokeWidth={isDirect ? 3.2 : isSecondary ? 1.6 : 1.1}
-                    strokeOpacity={isDirect ? 1.0 : isSecondary ? 0.45 : isFaded ? 0.03 : 0.16}
+                    strokeWidth={isDirect ? 3.2 : isSecondary ? 1.6 : 1.0}
+                    strokeOpacity={effectiveOpacity}
                     strokeLinecap="round"
                   />
 
@@ -1030,7 +1240,7 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
             {/* Nodes: Strictly separated text zones to guarantee ZERO text collisions */}
             {visibleNodes.map((node) => {
-              const pos = nodePositions[node.id] || { x: 450, y: 350 };
+              const pos = nodePositions[node.id] || { x: 440, y: 340 };
               const isSelected = selectedNode && selectedNode.id === node.id;
               const isHovered = hoveredNode && hoveredNode.id === node.id;
               const isConnected = activeNode && connectedIds.has(node.id);
@@ -1038,13 +1248,14 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
               const color = getNodeColor(node.type);
 
-              // Distinct text orientation to guarantee zero text overlap between adjacent columns:
-              // Authors (180): text points LEFT
-              // Papers (450): text points RIGHT
-              // Institutions (760): text points LEFT
-              // Topics (950): text points RIGHT
-              const isLeftFacing = node.type === 'Author' || node.type === 'Institution';
-              const maxChars = node.type === 'Paper' ? 24 : 20;
+              // Guaranteed Non-Colliding Orientation:
+              // In Swimlanes flow:
+              //   Authors (160) & Papers (440): text points LEFT
+              //   Institutions (760) & Topics (980): text points RIGHT
+              // In Radial orbit:
+              //   Nodes left of center point LEFT, nodes right of center point RIGHT
+              const isLeftFacing = layoutMode === 'radial' ? (pos.x < 600) : (node.type === 'Author' || node.type === 'Paper');
+              const maxChars = node.type === 'Paper' ? 26 : 22;
               const truncatedLabel = node.label.length > maxChars ? node.label.substring(0, maxChars - 2) + '...' : node.label;
 
               return (
@@ -1191,6 +1402,27 @@ export default function ConnectionsView({ onSelectPaper, onAddToCompare }) {
 
               {selectedNode.type === 'Paper' && (
                 <>
+                  {onOpenCite && (
+                    <button 
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        const cleanId = selectedNode.id.replace('paper_', '');
+                        onOpenCite({
+                          id: cleanId,
+                          title: selectedNode.label,
+                          publicationYear: selectedNode.year,
+                          venue: selectedNode.venue,
+                          doi: selectedNode.doi,
+                          citationCount: selectedNode.value
+                        });
+                      }}
+                      title="1-Click Cite in APA, MLA, Chicago, IEEE, Harvard, BibTeX"
+                      style={{ fontWeight: 600 }}
+                    >
+                      Cite Paper
+                    </button>
+                  )}
+
                   <button 
                     className="btn btn-primary btn-sm" 
                     onClick={() => {

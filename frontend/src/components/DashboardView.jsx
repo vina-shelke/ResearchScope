@@ -3,8 +3,10 @@ import TrendChart from './TrendChart';
 import { fetchPapers } from '../api/client';
 import { IconExternalLink } from './Icons';
 import { SkeletonMetricCard, SkeletonTableRow } from './SkeletonLoader';
+import { generateCOinS } from './CitationModal';
+import SmartRecommendationsView from './SmartRecommendationsView';
 
-export default function DashboardView({ summary, loading, onSelectPaper, onSelectTopic, onSearch, onAddToCompare }) {
+export default function DashboardView({ summary, loading, onSelectPaper, onSelectTopic, onSearch, onAddToCompare, onOpenCite }) {
   const [topicPapersData, setTopicPapersData] = useState(null);
   const [loadingPapers, setLoadingPapers] = useState(false);
   const [sortBy, setSortBy] = useState('publicationYear');
@@ -131,7 +133,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
             <span className="tag tag-accent">Growth Velocity</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' }}>
             {summary.emergingKeywords.slice(0, 6).map((item, idx) => {
               const velocity = Number(item.growthVelocity) || 0;
               const isPositive = velocity >= 0;
@@ -141,6 +143,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                   className="emerging-keyword-card"
                   onClick={() => onSearch && onSearch(item.keyword)}
                   title={`Click to analyze papers for "${item.keyword}"`}
+                  style={{ minWidth: 0, boxSizing: 'border-box' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '8px' }}>
                     <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.3 }}>
@@ -182,8 +185,8 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-            <div className="collab-stat-card">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '14px' }}>
+            <div className="collab-stat-card" style={{ minWidth: 0, boxSizing: 'border-box' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Multi-Author Rate
               </div>
@@ -193,7 +196,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Papers with &gt; 1 author</div>
             </div>
 
-            <div className="collab-stat-card">
+            <div className="collab-stat-card" style={{ minWidth: 0, boxSizing: 'border-box' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 International Collaboration
               </div>
@@ -203,7 +206,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Cross-country co-authorships</div>
             </div>
 
-            <div className="collab-stat-card">
+            <div className="collab-stat-card" style={{ minWidth: 0, boxSizing: 'border-box' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Multi-Institution Rate
               </div>
@@ -213,7 +216,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
               <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Affiliation diversity</div>
             </div>
 
-            <div className="collab-stat-card">
+            <div className="collab-stat-card" style={{ minWidth: 0, boxSizing: 'border-box' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Avg Authors per Paper
               </div>
@@ -225,6 +228,13 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
           </div>
         </div>
       )}
+
+      {/* 4.5. Smart Research Recommendations & Alerts */}
+      <SmartRecommendationsView
+        onSelectPaper={onSelectPaper}
+        onOpenCite={onOpenCite}
+        onAddToComparison={onAddToCompare}
+      />
 
       {/* 5. Research Papers Section (Directly Below Statistics) */}
       <div className="panel" style={{ marginBottom: '28px' }}>
@@ -316,6 +326,7 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                   return (
                     <tr key={paper.id}>
                       <td style={{ maxWidth: '420px' }}>
+                        <span className="Z3988" title={generateCOinS(paper)} style={{ display: 'none' }} />
                         <div 
                           className="table-link" 
                           onClick={() => onSelectPaper(paper.id)} 
@@ -354,8 +365,18 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                         )}
                       </td>
 
-                      <td style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-main)' }}>
-                        {paper.citationCount ?? 0}
+                      <td style={{ minWidth: '90px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+                          {paper.citationCount ?? 0}
+                        </div>
+                        {paper.citationCount > 0 && (
+                          <div 
+                            style={{ fontSize: '11px', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginTop: '2px' }}
+                            title="Citation velocity: Average citations per year"
+                          >
+                            {Math.round((paper.citationCount || 0) / Math.max(1, new Date().getFullYear() - (paper.publicationYear || new Date().getFullYear())))}/yr
+                          </div>
+                        )}
                       </td>
 
                       <td>
@@ -393,6 +414,16 @@ export default function DashboardView({ summary, loading, onSelectPaper, onSelec
                           >
                             Inspect Record
                           </button>
+                          {onOpenCite && (
+                            <button 
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => onOpenCite(paper)}
+                              title="Format citation (APA, MLA, Chicago, IEEE, Harvard, BibTeX)"
+                              style={{ fontSize: '11px', padding: '3px 6px' }}
+                            >
+                              Cite
+                            </button>
+                          )}
                           {onAddToCompare && (
                             <button
                               className="btn btn-secondary btn-sm"

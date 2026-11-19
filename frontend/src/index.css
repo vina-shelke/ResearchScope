@@ -297,11 +297,25 @@ code, pre, .font-mono {
 .header-top {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 16px 32px 14px 32px;
+  padding: 14px 28px 12px 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 28px;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+/* Circular Profile Avatar Button */
+.header-avatar-circle {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.header-avatar-circle:hover {
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 2px var(--accent) !important;
+}
+.header-avatar-circle:active {
+  transform: translateY(1px);
 }
 
 /* Brand Display */
@@ -361,10 +375,11 @@ code, pre, .font-mono {
   align-items: center;
 }
 
+.form-input,
 .search-input {
   width: 100%;
   height: 42px;
-  padding: 0 14px 0 42px;
+  padding: 0 14px;
   background-color: var(--search-input-bg);
   border: 1px solid var(--search-input-border);
   border-top-color: var(--border-shadow);
@@ -377,6 +392,17 @@ code, pre, .font-mono {
   box-sizing: border-box;
 }
 
+/* When inside an icon wrapper, leave space for the left icon */
+.search-input-wrapper .search-input {
+  padding-left: 42px;
+}
+
+select.search-input,
+select.form-input {
+  cursor: pointer;
+}
+
+.form-input:focus,
 .search-input:focus {
   outline: none;
   background-color: var(--search-focus-bg);
@@ -384,6 +410,7 @@ code, pre, .font-mono {
   box-shadow: var(--shadow-skeuo-inset), 0 0 0 2px rgba(130, 130, 142, 0.25);
 }
 
+.form-input::placeholder,
 .search-input::placeholder {
   color: var(--search-input-placeholder);
   font-weight: 400;
@@ -550,7 +577,8 @@ code, pre, .font-mono {
   padding: 0 24px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 12px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none; /* Firefox */
@@ -768,15 +796,11 @@ code, pre, .font-mono {
    ============================================================================== */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   gap: 16px;
   margin-bottom: 28px;
-}
-
-@media (max-width: 1100px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 600px) {
@@ -793,12 +817,16 @@ code, pre, .font-mono {
   border: 1px solid var(--metric-card-border);
   border-top: 1px solid var(--metric-card-border-top);
   border-radius: var(--radius-sm);
-  padding: 20px 22px;
-  min-height: 112px;
+  padding: 18px 20px;
+  min-height: 110px;
+  min-width: 0;
+  width: 100%;
   box-shadow: var(--shadow-skeuo-card), inset 0 1px 0 var(--border-highlight);
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
@@ -825,21 +853,25 @@ code, pre, .font-mono {
   font-weight: 700;
   color: var(--text-subtle);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   margin: 0;
   line-height: 1.35;
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .metric-value {
-  font-size: 28px;
+  font-size: clamp(22px, 2.4vw, 28px);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--text-main);
   line-height: 1.15;
   letter-spacing: -0.025em;
-  margin: 8px 0 6px 0;
+  margin: 6px 0;
   word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: color 0.25s ease;
 }
 
@@ -1514,4 +1546,26 @@ code, pre, .font-mono {
     bottom: 16px;
     justify-content: space-between;
   }
+}
+
+/* ==============================================================================
+   WORKSPACE COMMAND CENTER ENHANCEMENTS (Phase 1)
+   ============================================================================== */
+.workspace-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover) !important;
+  box-shadow: var(--shadow-skeuo-card-hover), inset 0 1px 0 var(--border-highlight) !important;
+}
+
+.workspace-paper-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-skeuo-card-hover);
+}
+
+.workspace-quick-actions button {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.workspace-quick-actions button:hover {
+  transform: translateY(-1px);
 }
